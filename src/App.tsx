@@ -730,7 +730,10 @@ export default function App() {
                 <div className="scope-orbit orbit-two" />
                 <div className="scope-state-card">
                   <small>Registry state</small>
-                  <strong>{registry?.project_count ?? '—'} projects</strong>
+                  <strong>
+                    {registry?.project_count ?? '—'}{' '}
+                    {registry?.project_count === 1 ? 'project' : 'projects'}
+                  </strong>
                   <span>Scope decisions backed by validator consensus</span>
                 </div>
               </div>
