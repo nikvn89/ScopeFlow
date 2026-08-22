@@ -62,17 +62,22 @@ It also never decides authoritative scope version, approval state, permissions, 
 
 ## UI
 
-### Dashboard
+### GenLayer-inspired dashboard
 
-- Connect / switch wallet
-- Create Project
-- My Projects
-- Open any project by ID
-- Recently Opened
+The frontend uses a light, portal-style dashboard language while keeping a distinct ScopeFlow identity:
+
+- persistent left navigation
+- clean top context bar
+- ScopeFlow project logo
+- visible **Built on GenLayer** logo/branding
+- large dark hero with scope/consensus visual motif
+- compact registry / wallet / decision metric cards
+- Create Project, My Projects, Open by ID, and Recently Opened kept on the dashboard
+- responsive sidebar and mobile layout
 
 ### Project Workspace
 
-Three compact tabs:
+Three compact sections remain available without changing contract behavior:
 
 - **Project** — current scope, parties, version, remaining capacity
 - **Change Requests** — submit requests and approve/reject live extensions
