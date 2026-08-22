@@ -363,6 +363,16 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (!notice || notice.title !== 'Wallet connected') return
+
+    const timer = window.setTimeout(() => {
+      setNotice(null)
+    }, 5000)
+
+    return () => window.clearTimeout(timer)
+  }, [notice])
+
+  useEffect(() => {
     const provider = window.ethereum
     if (!provider?.on) return
 
