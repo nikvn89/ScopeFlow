@@ -597,60 +597,155 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <button className="brand brand-button" onClick={closeProject}>
-          <span className="brand-mark">SF</span>
+      <aside className="sidebar">
+        <button className="sidebar-brand" onClick={closeProject}>
+          <img src="/scopeflow-logo.svg" alt="ScopeFlow logo" />
           <span>
             <strong>ScopeFlow</strong>
-            <small>Self-service scope governance</small>
+            <small>GenLayer project</small>
           </span>
         </button>
 
-        <div className="wallet-area">
-          {account && (
-            <div className="role-pill">
-              {project && <span>{role}</span>}
-              <strong>{shortAddress(account)}</strong>
-            </div>
-          )}
-
+        <nav className="sidebar-nav" aria-label="ScopeFlow navigation">
           <button
-            className="button button-secondary"
-            onClick={handleConnect}
-            disabled={busy !== null}
+            className={!project ? 'sidebar-link active' : 'sidebar-link'}
+            onClick={closeProject}
           >
-            {busy === 'connect'
-              ? 'Connecting…'
-              : account
-                ? 'Switch wallet'
-                : 'Connect wallet'}
+            <span className="nav-icon">⌂</span>
+            Dashboard
           </button>
-        </div>
-      </header>
 
-      <main className="content">
+          {project && (
+            <>
+              <button
+                className={workspaceTab === 'project' ? 'sidebar-link active' : 'sidebar-link'}
+                onClick={() => setWorkspaceTab('project')}
+              >
+                <span className="nav-icon">▣</span>
+                Project scope
+              </button>
+              <button
+                className={workspaceTab === 'requests' ? 'sidebar-link active' : 'sidebar-link'}
+                onClick={() => setWorkspaceTab('requests')}
+              >
+                <span className="nav-icon">⇄</span>
+                Change requests
+                {actionable.length > 0 && <span className="nav-count">{actionable.length}</span>}
+              </button>
+              <button
+                className={workspaceTab === 'history' ? 'sidebar-link active' : 'sidebar-link'}
+                onClick={() => setWorkspaceTab('history')}
+              >
+                <span className="nav-icon">↺</span>
+                History
+              </button>
+            </>
+          )}
+        </nav>
+
+        <div className="sidebar-bottom">
+          <div className="network-card">
+            <span className="network-dot" />
+            <div>
+              <strong>StudioNet</strong>
+              <small>Chain ID 61999</small>
+            </div>
+          </div>
+          <a className="sidebar-contract" href={explorerAddressUrl()} target="_blank" rel="noreferrer">
+            Contract 0xBC87…7F4A <span>↗</span>
+          </a>
+        </div>
+      </aside>
+
+      <div className="app-main">
+        <header className="topbar">
+          <div className="topbar-context">
+            <span>PROJECT / SCOPEFLOW</span>
+            <strong>{project ? `Project #${project.project_id}` : 'Dashboard'}</strong>
+          </div>
+
+          <div className="topbar-actions">
+            <a className="genlayer-badge" href="https://genlayer.com" target="_blank" rel="noreferrer">
+              <img src="/genlayer-logo.jpg" alt="GenLayer logo" />
+              <span>Built on GenLayer</span>
+            </a>
+            {account && (
+              <div className="role-pill">
+                {project && <span>{role}</span>}
+                <strong>{shortAddress(account)}</strong>
+              </div>
+            )}
+            <button
+              className="button button-wallet"
+              onClick={handleConnect}
+              disabled={busy !== null}
+            >
+              {busy === 'connect'
+                ? 'Connecting…'
+                : account
+                  ? 'Switch wallet'
+                  : 'Connect wallet'}
+            </button>
+          </div>
+        </header>
+
+        <main className="content">
         {!project ? (
           <>
             <section className="hero dashboard-hero">
-              <div>
-                <span className="eyebrow">GENLAYER · SELF-SERVICE PROJECT SCOPE</span>
-                <h1>Create your own scope agreement. Let consensus decide the boundary.</h1>
+              <div className="hero-copy">
+                <div className="hero-brandline">
+                  <img src="/scopeflow-logo.svg" alt="ScopeFlow logo" />
+                  <span>ScopeFlow · Consensus-governed scope</span>
+                </div>
+                <h1>Keep project scope clear as the work evolves.</h1>
                 <p>
-                  Any wallet can create a project and become its Client. ScopeFlow uses
-                  GenLayer to decide whether later work is already in scope, is a new
-                  extension, or needs clarification.
+                  Lock the agreed scope, submit change requests, and let GenLayer classify
+                  whether each request is already covered, extends the agreement, or needs clarification.
                 </p>
+                <div className="hero-actions">
+                  <a className="button button-hero" href="#create-project">Create a project</a>
+                  <a className="button button-hero-secondary" href={explorerAddressUrl()} target="_blank" rel="noreferrer">
+                    View contract ↗
+                  </a>
+                </div>
               </div>
 
-              <a
-                className="contract-card"
-                href={explorerAddressUrl()}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <span>ScopeFlow V2 contract</span>
+              <div className="hero-visual">
+                <div className="hero-genlayer">
+                  <img src="/genlayer-logo.jpg" alt="GenLayer logo" />
+                  <span>Built on GenLayer</span>
+                </div>
+                <div className="scope-orbit orbit-one" />
+                <div className="scope-orbit orbit-two" />
+                <div className="scope-state-card">
+                  <small>Registry state</small>
+                  <strong>{registry?.project_count ?? '—'} projects</strong>
+                  <span>Scope decisions backed by validator consensus</span>
+                </div>
+              </div>
+            </section>
+
+            <section className="metric-strip">
+              <div className="metric-card">
+                <span>Registry projects</span>
+                <strong>{registry?.project_count ?? '—'}</strong>
+                <small>Multi-tenant contract</small>
+              </div>
+              <div className="metric-card">
+                <span>My projects</span>
+                <strong>{account ? myProjects.length : '—'}</strong>
+                <small>{account ? 'Created by this wallet' : 'Connect wallet to load'}</small>
+              </div>
+              <div className="metric-card">
+                <span>Decision paths</span>
+                <strong>3</strong>
+                <small>In scope · Extension · Unclear</small>
+              </div>
+              <a className="metric-card metric-link" href={explorerAddressUrl()} target="_blank" rel="noreferrer">
+                <span>Contract</span>
                 <strong>0xBC87…7F4A</strong>
-                <small>{registry?.project_count ?? '—'} projects on registry · Explorer ↗</small>
+                <small>Open Explorer ↗</small>
               </a>
             </section>
 
@@ -666,7 +761,7 @@ export default function App() {
             </section>
 
             <div className="dashboard-grid">
-              <section className="panel create-panel">
+              <section className="panel create-panel" id="create-project">
                 <span className="eyebrow">CREATE PROJECT</span>
                 <h2>Start a new ScopeFlow project</h2>
                 <p>
@@ -1100,7 +1195,8 @@ export default function App() {
             )}
           </>
         )}
-      </main>
+        </main>
+      </div>
 
       {notice && (
         <aside className={`toast toast-${notice.kind}`} role="status">
