@@ -1,0 +1,24 @@
+ScopeFlow steward-fixed final GitHub package
+
+PASS: Python AST parse for contracts/ScopeGuardV2.py
+PASS: contractor opt-in state present
+PASS: accept_project present
+PASS: cancel_project present
+PASS: submit_request guarded by accepted/cancelled
+PASS: approve_extension guarded by accepted/cancelled
+PASS: reject_extension guarded by accepted/cancelled
+PASS: submit_request capacity pre-check removed
+PASS: approve_extension 6000-character append check retained
+PASS: get_project exposes accepted / accepted_at / cancelled / derived status
+PASS: frontend exposes accept/cancel controls and disables request input until ACTIVE
+PASS: frontend capacity text says capacity is consumed only on append
+PASS: duplicate Built on GenLayer badge removed from dashboard hero; topbar badge retained
+PASS: canonical frontend contract address is 0x20A5d7fcC4119aB91A6fC343cCEDCCB37E8C8dDb
+PASS: StudioNet runtime steward tests T1-T8 observed and documented in TESTING.md
+PASS: local frontend read smoke test observed for ACTIVE project #1 and CANCELLED project #2
+
+STILL REQUIRED BEFORE PORTAL RESUBMISSION:
+- push this final source to GitHub
+- redeploy Vercel from this source
+- run minimal live smoke test
+- update/resubmit portal evidence

@@ -1,54 +1,72 @@
-# ScopeFlow V2
+# ScopeFlow — Steward-Fixed Runtime-Passed Build
 
-**Self-service AI-governed project scope control on GenLayer.**
+**Mutual opt-in scope governance on GenLayer.**
 
-ScopeFlow V2 is the full dApp for the multi-tenant ScopeGuard V2 Intelligent Contract.
+This build responds to the Aug 25, 2026 steward request and has been redeployed and runtime-tested on StudioNet.
 
-## Live Contract
+## Canonical steward-fix deployment
 
 ```text
-0xBC87f884A58A472d2A28e831Bc2386056E6F7F4A
+Contract: 0x20A5d7fcC4119aB91A6fC343cCEDCCB37E8C8dDb
+Contract version: v0.3.0
+Frontend/package revision: v0.3.3
+Network: StudioNet
 ```
 
 Explorer:
+https://explorer-studio.genlayer.com/address/0x20A5d7fcC4119aB91A6fC343cCEDCCB37E8C8dDb
 
-https://explorer-studio.genlayer.com/address/0xBC87f884A58A472d2A28e831Bc2386056E6F7F4A
+## Steward fixes implemented
 
-## Judge / User Self-Service Flow
+### 1. Contractor opt-in is a real gate
 
-The deployer is not the owner of every project.
-
-Any connected wallet can:
-
-```text
-Connect Wallet
-→ Create Project
-→ caller becomes that project’s Client
-→ choose Contractor
-→ lock Initial Scope
-→ submit Change Requests
-→ receive GenLayer classification
-→ approve / reject extensions
-→ inspect append-only History
-```
-
-A Contractor or reviewer can open any known `project_id` directly.
-
-## Contract Model
-
-One ScopeGuard V2 contract supports multiple independent projects.
+A client may create a project and commit an initial scope, but the project remains:
 
 ```text
-ScopeGuard V2
-├── Project #1
-├── Project #2
-├── Project #3
-└── ...
+PENDING_CONTRACTOR_ACCEPTANCE
 ```
 
-Each project stores its own Client, Contractor, scope, scope version, and request history.
+until the named contractor accepts it on-chain.
 
-## Semantic Output
+Deterministic lifecycle states:
+
+```text
+PENDING_CONTRACTOR_ACCEPTANCE
+ACTIVE
+CANCELLED
+```
+
+Rules enforced on-chain:
+
+- only project parties can enter party-only flows;
+- only the named contractor can activate an unaccepted project;
+- the client can cancel only before acceptance;
+- `submit_request`, `approve_extension`, and `reject_extension` are blocked before acceptance;
+- a cancelled project is read-only;
+- the contractor accepts the exact committed scope; `accept_project` takes no replacement scope.
+
+### 2. Scope capacity is checked only when an extension is actually appended
+
+The old capacity pre-check was removed from `submit_request`. A request can be classified even when remaining capacity is very small. The 6,000-character limit is enforced only in the path where the second approval would actually append a `SCOPE_EXTENSION`.
+
+Runtime evidence used a 5,900-character scope with only 100 characters remaining. The extension request was created normally, the first approval succeeded, and the second approval reverted with:
+
+```text
+Scope capacity exceeded: appending this extension would exceed the 6000-character limit. The extension cannot be applied.
+```
+
+The rollback preserved:
+
+```text
+active_scope_version = 1
+scope_length = 5900
+scope_capacity_left = 100
+applied = false
+```
+
+## Semantic classification
+
+The semantic enum remains unchanged:
 
 ```text
 SCOPE_IN
@@ -56,55 +74,18 @@ SCOPE_EXTENSION
 SCOPE_UNCLEAR
 ```
 
-The frontend never decides these outcomes.
+Observed runtime examples on the steward-fix deployment:
 
-It also never decides authoritative scope version, approval state, permissions, or request status.
+- request #1 on project #1 -> `SCOPE_EXTENSION`; after both parties approved it, `active_scope_version` advanced from 1 to 2 and the extension was appended;
+- request #2 on project #1 -> `SCOPE_IN` / `ACCEPTED_IN_SCOPE` with no new approval gate.
 
-## UI
+## Honest limitation
 
-### GenLayer-inspired dashboard
+ScopeFlow does not verify that described work was actually performed. It proves the governance state around the committed scope: who accepted it, how requests were classified, whether extensions received the required approvals, and what scope text is currently in force.
 
-The frontend uses a light, portal-style dashboard language while keeping a distinct ScopeFlow identity:
+## Frontend
 
-- persistent left navigation
-- clean top context bar
-- ScopeFlow project logo
-- visible **Built on GenLayer** logo/branding
-- large dark hero with scope/consensus visual motif
-- compact registry / wallet / decision metric cards
-- Create Project, My Projects, Open by ID, and Recently Opened kept on the dashboard
-- responsive sidebar and mobile layout
-
-### Project Workspace
-
-Three compact sections remain available without changing contract behavior:
-
-- **Project** — current scope, parties, version, remaining capacity
-- **Change Requests** — submit requests and approve/reject live extensions
-- **History** — append-only request decisions
-
-Role-aware UI:
-
-```text
-CLIENT
-CONTRACTOR
-OBSERVER
-```
-
-Unauthorized writes remain visible but disabled with a reason.
-
-## RPC Safety
-
-After a write returns a transaction hash, ScopeFlow never resubmits the same transaction merely because receipt monitoring is delayed.
-
-The UI:
-
-- waits only for bounded `ACCEPTED` monitoring;
-- retains the transaction hash;
-- links to Explorer;
-- tells the user to Refresh instead of resubmitting.
-
-## Run
+Default contract address in `src/lib/config.ts` is already updated to the steward-fix deployment.
 
 ```bash
 npm install
@@ -112,48 +93,4 @@ npm run build
 npm run dev
 ```
 
-## Contract File
-
-The repository includes:
-
-```text
-contracts/ScopeGuardV2.py
-```
-
-This is the same multi-tenant architecture used by the project deployment.
-
-## Verified Browser Flow
-
-The current ScopeFlow V2 frontend was built and tested locally against the V2 project contract.
-
-Verified:
-
-```text
-PASS  npm run build
-PASS  wallet connection
-PASS  self-service create project
-PASS  caller becomes project CLIENT
-PASS  SCOPE_IN → ACCEPTED_IN_SCOPE
-PASS  SCOPE_EXTENSION → AWAITING_APPROVAL
-PASS  Client approval
-PASS  Contractor approval
-PASS  role switch CLIENT → CONTRACTOR
-PASS  active scope version 1 → 2
-PASS  approved extension appended to active scope
-PASS  request count = 2
-```
-
-Final verified project state:
-
-```text
-Project #1
-Scope version = 2
-Requests = 2
-Scope length = 394 / 6000
-Approved extension:
-Add a full dark mode theme across every page of the website.
-```
-
-## Status
-
-**ScopeFlow V2 frontend and its self-service end-to-end project flow are verified locally against the deployed GenLayer StudioNet contract.**
+Redeploy Vercel from this source, run the live smoke test in `TESTING.md`, then resubmit the portal entry with the canonical contract and updated evidence links.

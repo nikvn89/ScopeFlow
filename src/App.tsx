@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  acceptProject,
   approveExtension,
+  cancelProject,
   connectWallet,
   createProject,
   explorerAddressUrl,
@@ -18,6 +20,7 @@ import {
   type WriteOutcome,
 } from './lib/genlayer'
 import {
+  CONTRACT_ADDRESS,
   MAX_REQUEST_LENGTH,
   MAX_SCOPE_LENGTH,
   MIN_REQUEST_LENGTH,
@@ -155,7 +158,9 @@ function RequestCard({
   onReject: (id: number) => void
   compact?: boolean
 }) {
+  const projectActive = project.status === 'ACTIVE'
   const liveExtension =
+    projectActive &&
     request.classification === 'SCOPE_EXTENSION' &&
     request.status === 'AWAITING_APPROVAL'
 
@@ -170,12 +175,14 @@ function RequestCard({
   let approveReason = ''
   if (!account) approveReason = 'Connect a project-party wallet.'
   else if (!isParty) approveReason = 'Only this project’s Client or Contractor may approve.'
+  else if (!projectActive) approveReason = 'The project is not active.'
   else if (!liveExtension) approveReason = 'This extension is not awaiting approval.'
   else if (alreadyApproved) approveReason = `The ${role.toLowerCase()} already approved.`
 
   let rejectReason = ''
   if (!account) rejectReason = 'Connect a project-party wallet.'
   else if (!isParty) rejectReason = 'Only this project’s Client or Contractor may reject.'
+  else if (!projectActive) rejectReason = 'The project is not active.'
   else if (!liveExtension) rejectReason = 'This extension is not awaiting a decision.'
 
   return (
@@ -529,6 +536,32 @@ export default function App() {
     setWorkspaceTab('project')
   }
 
+  async function handleAcceptProject() {
+    if (!account || !project) return
+
+    const outcome = await executeWrite('accept-project', () =>
+      acceptProject(account, project.project_id),
+    )
+
+    if (outcome?.kind === 'accepted') {
+      await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      await openProject(project.project_id, pageStart)
+    }
+  }
+
+  async function handleCancelProject() {
+    if (!account || !project) return
+
+    const outcome = await executeWrite('cancel-project', () =>
+      cancelProject(account, project.project_id),
+    )
+
+    if (outcome?.kind === 'accepted') {
+      await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      await openProject(project.project_id, pageStart)
+    }
+  }
+
   async function handleSubmitRequest() {
     if (!account || !project) return
 
@@ -603,7 +636,9 @@ export default function App() {
     : 0
 
   const canSubmit =
-    Boolean(account && project) && (role === 'CLIENT' || role === 'CONTRACTOR')
+    Boolean(account && project) &&
+    project?.status === 'ACTIVE' &&
+    (role === 'CLIENT' || role === 'CONTRACTOR')
 
   return (
     <div className="app-shell">
@@ -662,7 +697,7 @@ export default function App() {
             </div>
           </div>
           <a className="sidebar-contract" href={explorerAddressUrl()} target="_blank" rel="noreferrer">
-            Contract 0xBC87…7F4A <span>↗</span>
+            Contract {shortAddress(CONTRACT_ADDRESS)} <span>↗</span>
           </a>
         </div>
       </aside>
@@ -722,10 +757,6 @@ export default function App() {
               </div>
 
               <div className="hero-visual">
-                <div className="hero-genlayer">
-                  <img src="/genlayer-logo.jpg" alt="GenLayer logo" />
-                  <span>Built on GenLayer</span>
-                </div>
                 <div className="scope-orbit orbit-one" />
                 <div className="scope-orbit orbit-two" />
                 <div className="scope-state-card">
@@ -757,7 +788,7 @@ export default function App() {
               </div>
               <a className="metric-card metric-link" href={explorerAddressUrl()} target="_blank" rel="noreferrer">
                 <span>Contract</span>
-                <strong>0xBC87…7F4A</strong>
+                <strong>{shortAddress(CONTRACT_ADDRESS)}</strong>
                 <small>Open Explorer ↗</small>
               </a>
             </section>
@@ -887,6 +918,15 @@ export default function App() {
                             <strong>Project #{item.project_id}</strong>
                             <small>Contractor {shortAddress(item.contractor)}</small>
                           </div>
+                          <span className={badgeClass(
+                            item.status === 'ACTIVE'
+                              ? 'SCOPE_IN'
+                              : item.status === 'CANCELLED'
+                                ? 'REJECTED_EXTENSION'
+                                : 'SCOPE_EXTENSION',
+                          )}>
+                            {humanStatus(item.status)}
+                          </span>
                           <div>
                             <span>V{item.active_scope_version}</span>
                             <small>{item.request_count} requests</small>
@@ -931,6 +971,15 @@ export default function App() {
                   <span className={`workspace-role role-${role.toLowerCase()}`}>
                     {role}
                   </span>
+                  <span className={badgeClass(
+                    project.status === 'ACTIVE'
+                      ? 'SCOPE_IN'
+                      : project.status === 'CANCELLED'
+                        ? 'REJECTED_EXTENSION'
+                        : 'SCOPE_EXTENSION',
+                  )}>
+                    {humanStatus(project.status)}
+                  </span>
                 </div>
               </div>
 
@@ -967,12 +1016,50 @@ export default function App() {
               </button>
             </nav>
 
+            {project.status === 'PENDING_CONTRACTOR_ACCEPTANCE' && (
+              <div className="project-state-banner project-state-pending">
+                <div>
+                  <strong>Scope is not in force yet — waiting for contractor acceptance.</strong>
+                  <span>The committed scope cannot classify requests or accept extensions until the assigned contractor opts in.</span>
+                </div>
+                {role === 'CONTRACTOR' && (
+                  <button
+                    className="button button-primary"
+                    disabled={busy !== null}
+                    onClick={() => void handleAcceptProject()}
+                  >
+                    {busy === 'accept-project' ? 'Accepting…' : 'Accept project'}
+                  </button>
+                )}
+                {role === 'CLIENT' && (
+                  <button
+                    className="button button-danger"
+                    disabled={busy !== null}
+                    onClick={() => void handleCancelProject()}
+                  >
+                    {busy === 'cancel-project' ? 'Cancelling…' : 'Cancel project'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {project.status === 'CANCELLED' && (
+              <div className="project-state-banner project-state-cancelled">
+                <div>
+                  <strong>Project cancelled.</strong>
+                  <span>This project was cancelled before contractor acceptance and is now read-only.</span>
+                </div>
+              </div>
+            )}
+
             {workspaceTab === 'project' && (
               <div className="project-layout">
                 <section className="panel scope-panel">
                   <div className="panel-heading">
                     <div>
-                      <span className="eyebrow">ACTIVE AGREEMENT</span>
+                      <span className="eyebrow">
+                        {project.status === 'ACTIVE' ? 'ACTIVE AGREEMENT' : 'COMMITTED PROPOSED SCOPE'}
+                      </span>
                       <h2>Scope V{project.active_scope_version}</h2>
                     </div>
                     <span className="project-id-chip">Project #{project.project_id}</span>
@@ -1005,6 +1092,7 @@ export default function App() {
                       />
                     </div>
                     <small>{project.scope_capacity_left} characters remaining</small>
+                    <small>Capacity is consumed only when an approved extension is appended.</small>
                   </div>
                 </section>
 
@@ -1025,6 +1113,30 @@ export default function App() {
                       </div>
                       {role === 'CONTRACTOR' && <span className="you-tag">You</span>}
                     </div>
+                    <div className="party-row">
+                      <div>
+                        <small>Project status</small>
+                        <strong>{humanStatus(project.status)}</strong>
+                      </div>
+                    </div>
+                    {project.status === 'PENDING_CONTRACTOR_ACCEPTANCE' && role === 'CONTRACTOR' && (
+                      <button
+                        className="button button-primary full-width-action"
+                        disabled={busy !== null}
+                        onClick={() => void handleAcceptProject()}
+                      >
+                        {busy === 'accept-project' ? 'Accepting…' : 'Accept project'}
+                      </button>
+                    )}
+                    {project.status === 'PENDING_CONTRACTOR_ACCEPTANCE' && role === 'CLIENT' && (
+                      <button
+                        className="button button-danger full-width-action"
+                        disabled={busy !== null}
+                        onClick={() => void handleCancelProject()}
+                      >
+                        {busy === 'cancel-project' ? 'Cancelling…' : 'Cancel project'}
+                      </button>
+                    )}
                   </section>
 
                   <section className="panel stats-card">
@@ -1072,6 +1184,7 @@ export default function App() {
                   <textarea
                     value={requestText}
                     maxLength={MAX_REQUEST_LENGTH}
+                    disabled={project.status !== 'ACTIVE'}
                     onChange={(event) => setRequestText(event.target.value)}
                     placeholder="Example: Add a full dark mode theme across every page of the website."
                     rows={7}
@@ -1104,6 +1217,14 @@ export default function App() {
                       This wallet is an Observer for Project #{project.project_id}. Open
                       your own project or switch to its Client/Contractor wallet to write.
                     </small>
+                  )}
+                  {project.status === 'PENDING_CONTRACTOR_ACCEPTANCE' && (
+                    <small className="form-reason">
+                      Scope is not in force yet. The Contractor must accept the committed scope before requests can be classified.
+                    </small>
+                  )}
+                  {project.status === 'CANCELLED' && (
+                    <small className="form-reason">This cancelled project is read-only.</small>
                   )}
                 </section>
 

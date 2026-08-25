@@ -1,4 +1,4 @@
-# v0.2.16
+# v0.3.0
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 from genlayer import *
@@ -31,6 +31,9 @@ class ScopeGuard(gl.Contract):
     project_versions: TreeMap[u256, u256]
     project_request_counts: TreeMap[u256, u256]
     project_created_at: TreeMap[u256, u256]
+    project_accepted: TreeMap[u256, bool]
+    project_accepted_at: TreeMap[u256, u256]
+    project_cancelled: TreeMap[u256, bool]
 
     client_project_counts: TreeMap[str, u256]
     client_project_ids: TreeMap[str, u256]
@@ -485,6 +488,9 @@ or
         self.project_versions[project_key] = u256(1)
         self.project_request_counts[project_key] = u256(0)
         self.project_created_at[project_key] = u256(now)
+        self.project_accepted[project_key] = False
+        self.project_accepted_at[project_key] = u256(0)
+        self.project_cancelled[project_key] = False
 
         client_key = str(client_address).lower()
 
@@ -507,6 +513,67 @@ or
         ] = project_key
 
     @gl.public.write
+    def accept_project(
+        self,
+        project_id: int,
+    ) -> None:
+        project_key = self._project_key(project_id)
+
+        if self._party_role(project_key) != "CONTRACTOR":
+            raise gl.vm.UserError("Only the contractor may accept")
+
+        if bool(
+            self.project_cancelled.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError("Project cancelled")
+
+        if bool(
+            self.project_accepted.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError("Project already accepted")
+
+        self.project_accepted[project_key] = True
+        self.project_accepted_at[project_key] = u256(
+            self._chain_unix()
+        )
+
+    @gl.public.write
+    def cancel_project(
+        self,
+        project_id: int,
+    ) -> None:
+        project_key = self._project_key(project_id)
+
+        if self._party_role(project_key) != "CLIENT":
+            raise gl.vm.UserError("Only the client may cancel")
+
+        if bool(
+            self.project_accepted.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError(
+                "Accepted project cannot be cancelled"
+            )
+
+        if bool(
+            self.project_cancelled.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError("Project already cancelled")
+
+        self.project_cancelled[project_key] = True
+
+    @gl.public.write
     def submit_request(
         self,
         project_id: int,
@@ -515,6 +582,24 @@ or
         project_key = self._project_key(project_id)
 
         self._party_role(project_key)
+
+        if bool(
+            self.project_cancelled.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError("Project cancelled")
+
+        if not bool(
+            self.project_accepted.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError(
+                "Contractor has not accepted this project yet"
+            )
 
         request_count = int(
             self.project_request_counts.get(
@@ -536,17 +621,6 @@ or
                 "",
             )
         )
-
-        composed_length = (
-            len(scope)
-            + len(APPROVED_SEPARATOR)
-            + len(request_text)
-        )
-
-        if composed_length > self.MAX_SCOPE_LENGTH:
-            raise gl.vm.UserError(
-                "Insufficient scope capacity"
-            )
 
         now = self._chain_unix()
 
@@ -667,6 +741,25 @@ or
     ) -> None:
         project_key = self._project_key(project_id)
         role = self._party_role(project_key)
+
+        if bool(
+            self.project_cancelled.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError("Project cancelled")
+
+        if not bool(
+            self.project_accepted.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError(
+                "Contractor has not accepted this project yet"
+            )
+
         request_key = self._request_key(
             project_key,
             request_id,
@@ -789,7 +882,7 @@ or
 
             if len(new_scope) > self.MAX_SCOPE_LENGTH:
                 raise gl.vm.UserError(
-                    "Scope capacity exceeded"
+                    "Scope capacity exceeded: appending this extension would exceed the 6000-character limit. The extension cannot be applied."
                 )
 
             self.project_scopes[
@@ -813,6 +906,24 @@ or
         project_key = self._project_key(project_id)
 
         self._party_role(project_key)
+
+        if bool(
+            self.project_cancelled.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError("Project cancelled")
+
+        if not bool(
+            self.project_accepted.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError(
+                "Contractor has not accepted this project yet"
+            )
 
         request_key = self._request_key(
             project_key,
@@ -901,6 +1012,26 @@ or
             )
         )
 
+        accepted = bool(
+            self.project_accepted.get(
+                project_key,
+                False,
+            )
+        )
+        cancelled = bool(
+            self.project_cancelled.get(
+                project_key,
+                False,
+            )
+        )
+        status = (
+            "CANCELLED"
+            if cancelled
+            else "ACTIVE"
+            if accepted
+            else "PENDING_CONTRACTOR_ACCEPTANCE"
+        )
+
         return json.dumps(
             {
                 "project_id": project_id,
@@ -934,6 +1065,15 @@ or
                         u256(0),
                     )
                 ),
+                "accepted": accepted,
+                "accepted_at": int(
+                    self.project_accepted_at.get(
+                        project_key,
+                        u256(0),
+                    )
+                ),
+                "cancelled": cancelled,
+                "status": status,
                 "created_at": int(
                     self.project_created_at.get(
                         project_key,
@@ -1192,6 +1332,35 @@ or
                                     project_key,
                                     u256(0),
                                 )
+                            ),
+                            "accepted": bool(
+                                self.project_accepted.get(
+                                    project_key,
+                                    False,
+                                )
+                            ),
+                            "cancelled": bool(
+                                self.project_cancelled.get(
+                                    project_key,
+                                    False,
+                                )
+                            ),
+                            "status": (
+                                "CANCELLED"
+                                if bool(
+                                    self.project_cancelled.get(
+                                        project_key,
+                                        False,
+                                    )
+                                )
+                                else "ACTIVE"
+                                if bool(
+                                    self.project_accepted.get(
+                                        project_key,
+                                        False,
+                                    )
+                                )
+                                else "PENDING_CONTRACTOR_ACCEPTANCE"
                             ),
                             "created_at": int(
                                 self.project_created_at.get(

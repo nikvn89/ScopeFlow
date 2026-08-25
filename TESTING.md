@@ -1,251 +1,186 @@
-# ScopeFlow V2 — Verified Testing
+# ScopeFlow — Steward Fix Runtime Evidence
 
-## Contract
-
-```text
-0xBC87f884A58A472d2A28e831Bc2386056E6F7F4A
-```
-
-Explorer:
-
-https://explorer-studio.genlayer.com/address/0xBC87f884A58A472d2A28e831Bc2386056E6F7F4A
-
----
-
-## Build
-
-Command:
-
-```bash
-npm run build
-```
-
-Result:
+Canonical deployment:
 
 ```text
-PASS
+0x20A5d7fcC4119aB91A6fC343cCEDCCB37E8C8dDb
 ```
 
-The V2 frontend compiled successfully after the final TypeScript fixes.
+The following results were actually observed on StudioNet.
 
----
-
-## Test 1 — Wallet Connection
-
-A MetaMask wallet connected successfully.
-
-Observed:
+Wallet shorthand used during testing:
 
 ```text
-wallet address shown in header
-Switch wallet available
+7F4 = client
+A61 = contractor
+701 = unrelated third wallet
 ```
 
-Result:
+## T1 — Pending until contractor accepts — PASS
+
+Project #1 created by 7F4 naming A61 as contractor. `get_project(1)` returned:
 
 ```text
-PASS
+accepted = false
+accepted_at = 0
+cancelled = false
+status = PENDING_CONTRACTOR_ACCEPTANCE
+request_count = 0
 ```
 
----
+## T2 — No classification before opt-in — PASS
 
-## Test 2 — Self-Service Create Project
-
-Connected wallet created a new project from the browser.
-
-Initial scope:
+7F4 called `submit_request(1, ...)` before acceptance. Observed rollback:
 
 ```text
-Contractor will maintain the existing pricing page by correcting spelling and grammar, updating existing page copy, and making minor visual adjustments within the current design system. New site-wide themes, new application features, and new page templates are excluded unless separately approved.
+Contractor has not accepted this project yet
 ```
 
-Observed:
+## T3 — Wrong wallet cannot accept — PASS
+
+701 called `accept_project(3)` for a project where 701 was neither client nor contractor. Observed rollback:
 
 ```text
-Project #1
-Scope V1
-connected wallet role = CLIENT
-Contractor stored correctly
-Scope length = 297 / 6000
-Requests = 0
+Only project parties
 ```
 
-Result:
+This proves an unrelated wallet cannot activate the project.
+
+## T4 — Contractor accepts exact committed scope — PASS
+
+A61 accepted project #1. `get_project(1)` then returned:
 
 ```text
-PASS
+accepted = true
+accepted_at > 0
+cancelled = false
+status = ACTIVE
+active_scope_version = 1
 ```
 
-This verifies the judge/user self-service requirement: the project creator becomes Client without relying on deployer ownership.
+The committed scope text remained unchanged.
 
----
+## T5 — Client cannot cancel after acceptance — PASS
 
-## Test 3 — SCOPE_IN
-
-Submitted from the frontend:
+7F4 called `cancel_project(1)` after A61 accepted. Observed rollback:
 
 ```text
-Fix the spelling errors on the pricing page.
+Accepted project cannot be cancelled
 ```
 
-Observed in History:
+## T6 — Classification after acceptance — PASS
+
+### Extension path
+
+Project #1 request #1 was classified:
 
 ```text
-Request #1
-IN SCOPE
-ACCEPTED IN SCOPE
-Judged against Scope V1
+SCOPE_EXTENSION
 ```
 
-Scope version remained:
+After both 7F4 and A61 approved, `get_request(1,1)` showed:
 
 ```text
-1
+client_approved = true
+contractor_approved = true
+applied = true
+status = APPROVED_EXTENSION
 ```
 
-Result:
+`get_project(1)` showed:
 
 ```text
-PASS
+active_scope_version = 2
+request_count = 1
+status = ACTIVE
 ```
 
----
+and the approved extension was appended to `active_scope`.
 
-## Test 4 — SCOPE_EXTENSION
+### In-scope path
 
-Submitted from the frontend:
+A61 submitted:
 
 ```text
-Add a full dark mode theme across every page of the website.
+Implement the exportable activity history already specified in the committed scope.
 ```
 
-Observed:
+Consensus returned:
 
 ```text
-Request #2
-SCOPE EXTENSION
-AWAITING APPROVAL
-Client = Pending
-Contractor = Pending
-Judged against Scope V1
+SCOPE_IN
 ```
 
-Result:
+`get_request(1,2)` showed:
 
 ```text
-PASS
+classification = SCOPE_IN
+status = ACCEPTED_IN_SCOPE
+client_approved = false
+contractor_approved = false
+applied = false
 ```
 
----
+No additional approval gate was required.
 
-## Test 5 — Client Approval
+## T7 — Capacity check only at append — PASS
 
-Client clicked:
+Project #5 used a committed initial scope of exactly 5,900 characters:
 
 ```text
-Approve
+scope_length = 5900
+scope_capacity_left = 100
 ```
 
-Observed:
+A new request was still accepted and classified `SCOPE_EXTENSION`; submission itself was not blocked by remaining capacity.
+
+The first party approval succeeded. The second-party approval attempted to append the extension and reverted with:
 
 ```text
-Client = Approved
-Contractor = Pending
-status = AWAITING APPROVAL
-Scope remains V1
-Client Approve button disabled after approval
+Scope capacity exceeded: appending this extension would exceed the 6000-character limit. The extension cannot be applied.
 ```
 
-Result:
+Post-rollback state:
 
 ```text
-PASS
+client_approved = true
+contractor_approved = false
+applied = false
+status = AWAITING_APPROVAL
+active_scope_version = 1
+scope_length = 5900
+scope_capacity_left = 100
 ```
 
----
+This is direct runtime evidence that the capacity check occurs only when an extension would actually be appended.
 
-## Test 6 — Contractor Approval
+## T8 — Cancel before acceptance — PASS
 
-Wallet switched to the assigned Contractor.
-
-Observed role:
+Project #2 was cancelled before contractor acceptance. `get_project(2)` showed:
 
 ```text
-CONTRACTOR
+accepted = false
+cancelled = true
+status = CANCELLED
 ```
 
-Contractor approved Request #2.
-
-Observed:
+A subsequent `submit_request(2, ...)` reverted with:
 
 ```text
-0 awaiting decision
-transaction accepted
-Scope V1 → Scope V2
+Project cancelled
 ```
 
-Result:
+## Runtime conclusion
 
 ```text
-PASS
+T1 PASS
+T2 PASS
+T3 PASS
+T4 PASS
+T5 PASS
+T6 PASS
+T7 PASS
+T8 PASS
 ```
 
----
-
-## Test 7 — Final Project State
-
-Observed on the Project tab:
-
-```text
-Project #1
-Scope V2
-Scope version = 2
-Requests = 2
-Scope length = 394 / 6000
-Scope capacity remaining = 5606
-```
-
-The active agreement visibly includes:
-
-```text
-APPROVED EXTENSION
-
-Add a full dark mode theme across every page of the website.
-```
-
-Result:
-
-```text
-PASS
-```
-
----
-
-## Verified Summary
-
-```text
-PASS  Build
-PASS  Connect wallet
-PASS  Self-service create project
-PASS  Project creator becomes CLIENT
-PASS  Contractor stored correctly
-PASS  SCOPE_IN classification
-PASS  ACCEPTED_IN_SCOPE rendering
-PASS  SCOPE_EXTENSION classification
-PASS  AWAITING_APPROVAL rendering
-PASS  Client approval
-PASS  Contractor wallet role
-PASS  Contractor approval
-PASS  Scope V1 → V2
-PASS  Approved extension displayed in active agreement
-PASS  Request count = 2
-PASS  Scope capacity updated
-```
-
-## Final Verdict
-
-```text
-PASS
-```
-
-ScopeFlow V2 has completed the intended self-service browser flow end-to-end against its deployed GenLayer StudioNet contract.
+The steward-requested contract behavior is runtime-verified on the canonical deployment above. Frontend/Vercel redeployment remains a separate final step.

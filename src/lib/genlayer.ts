@@ -16,6 +16,10 @@ export type ScopeProject = {
   scope_length: number
   scope_capacity_left: number
   request_count: number
+  accepted: boolean
+  accepted_at: number
+  cancelled: boolean
+  status: 'PENDING_CONTRACTOR_ACCEPTANCE' | 'ACTIVE' | 'CANCELLED' | string
   created_at: number
 }
 
@@ -24,6 +28,9 @@ export type ClientProjectSummary = {
   contractor: string
   active_scope_version: number
   request_count: number
+  accepted: boolean
+  cancelled: boolean
+  status: 'PENDING_CONTRACTOR_ACCEPTANCE' | 'ACTIVE' | 'CANCELLED' | string
   created_at: number
 }
 
@@ -246,6 +253,20 @@ export function createProject(
   initialScope: string,
 ) {
   return submitWrite(account, 'create_project', [contractor, initialScope])
+}
+
+export function acceptProject(
+  account: `0x${string}`,
+  projectId: number,
+) {
+  return submitWrite(account, 'accept_project', [projectId])
+}
+
+export function cancelProject(
+  account: `0x${string}`,
+  projectId: number,
+) {
+  return submitWrite(account, 'cancel_project', [projectId])
 }
 
 export function submitRequest(
