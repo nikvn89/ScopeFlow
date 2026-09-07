@@ -1,12 +1,13 @@
 {
   "name": "scopeflow-genlayer",
   "private": true,
-  "version": "0.3.3",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:ledger": "node tests/run-ledger.mjs"
   },
   "dependencies": {
     "genlayer-js": "1.1.8",

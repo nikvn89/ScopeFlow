@@ -1,91 +1,93 @@
-# ScopeFlow — Steward-Fixed Runtime-Passed Build
+# ScopeFlow
 
-**Mutual opt-in scope governance on GenLayer.**
+**Consensus-governed project scope with an immutable effective-scope version ledger.**
 
-This build responds to the Aug 25, 2026 steward request and has been redeployed and runtime-tested on StudioNet.
+ScopeFlow lets a Client commit an initial scope, requires explicit Contractor opt-in, classifies change requests with GenLayer consensus, and requires both parties to approve material scope extensions. Milestone v1 adds a permanent on-chain history of every scope version that actually became effective.
 
-## Canonical steward-fix deployment
+## Deployments
 
-```text
-Contract: 0x20A5d7fcC4119aB91A6fC343cCEDCCB37E8C8dDb
-Contract version: v0.3.0
-Frontend/package revision: v0.3.3
-Network: StudioNet
-```
-
-Explorer:
-https://explorer-studio.genlayer.com/address/0x20A5d7fcC4119aB91A6fC343cCEDCCB37E8C8dDb
-
-## Steward fixes implemented
-
-### 1. Contractor opt-in is a real gate
-
-A client may create a project and commit an initial scope, but the project remains:
+### Accepted baseline
 
 ```text
-PENDING_CONTRACTOR_ACCEPTANCE
+Address: 0x20A5d7fcC4119aB91A6fC343cCEDCCB37E8C8dDb
+Contract version: 0.3.0
+Source SHA256: dee6484d093e5487a59e83f29718fed593334d848bc52cdfc012cd5c922d3ee7
 ```
 
-until the named contractor accepts it on-chain.
-
-Deterministic lifecycle states:
+### Milestone v1
 
 ```text
-PENDING_CONTRACTOR_ACCEPTANCE
-ACTIVE
-CANCELLED
+Address: 0x6DcCC0d679515146b1e4c631A9f1215C7C31E8fe
+Contract version: 0.4.0
+Contract source: contracts/ScopeFlow.py
+Source SHA256: 4b80a8cec6309dbb6e6a082ce913899cb6d36059bc07a8380277644cb75f5e1a
 ```
 
-Rules enforced on-chain:
+The baseline is retained as the before-state. Milestone v1 was deployed as a fresh StudioNet instance because the Intelligent Contract changed.
 
-- only project parties can enter party-only flows;
-- only the named contractor can activate an unaccepted project;
-- the client can cancel only before acceptance;
-- `submit_request`, `approve_extension`, and `reject_extension` are blocked before acceptance;
-- a cancelled project is read-only;
-- the contractor accepts the exact committed scope; `accept_project` takes no replacement scope.
+## Milestone v1 — Immutable Scope Version Ledger
 
-### 2. Scope capacity is checked only when an extension is actually appended
+New behavior:
 
-The old capacity pre-check was removed from `submit_request`. A request can be classified even when remaining capacity is very small. The 6,000-character limit is enforced only in the path where the second approval would actually append a `SCOPE_EXTENSION`.
+- no effective snapshot exists before Contractor acceptance;
+- Contractor acceptance writes immutable V1 from the exact committed initial scope;
+- each fully approved extension appends exactly one new version;
+- every version records previous version, originating request, extension text, effective time, and approval provenance;
+- historical effective-scope text remains readable after newer versions become active;
+- rejected, failed, superseded, unauthorized, or replayed paths cannot create phantom versions;
+- paginated ledger reads expose an ordered, gap-free chain.
 
-Runtime evidence used a 5,900-character scope with only 100 characters remaining. The extension request was created normally, the first approval succeeded, and the second approval reverted with:
+New read methods:
 
 ```text
-Scope capacity exceeded: appending this extension would exceed the 6000-character limit. The extension cannot be applied.
+get_scope_version(project_id, version)
+get_scope_versions(project_id, from_version, count)
 ```
 
-The rollback preserved:
+`get_project()` also exposes `scope_version_count`, and `get_registry()` advertises `contract_version = 0.4.0` plus `scope_version_ledger = true`.
+
+## Scope Ledger UI
+
+The History area is upgraded to a Scope Ledger workspace with:
+
+- V1 → V2 → V3 timeline;
+- current-version marker;
+- previous-version link;
+- originating request;
+- effective timestamp;
+- Client/Contractor approval provenance;
+- full historical effective-scope snapshot;
+- request audit trail.
+
+The frontend is configured for the milestone deployment address.
+
+## Preserved governance invariants
+
+- only the named Contractor can activate a pending project;
+- Client cancellation is limited to the pre-acceptance state;
+- requests are blocked before acceptance and after cancellation;
+- semantic decisions remain `SCOPE_IN`, `SCOPE_EXTENSION`, or `SCOPE_UNCLEAR`;
+- only `SCOPE_EXTENSION` enters two-party approval;
+- each request is pinned to the scope version it was classified against;
+- stale requests become non-actionable after another extension advances scope;
+- duplicate approval, rejected-extension replay, applied-extension replay, and scope-capacity overflow remain guarded;
+- semantic failure raises before consequential request/counter writes complete.
+
+## Reproduce local ledger checks
+
+```bash
+npm run test:ledger
+```
+
+Current result:
 
 ```text
-active_scope_version = 1
-scope_length = 5900
-scope_capacity_left = 100
-applied = false
+52/52 directed/source checks passed
+Property sweep: 5000 traces / 80313 transitions / 0 invariant failures
+Contract SHA256: 4b80a8cec6309dbb6e6a082ce913899cb6d36059bc07a8380277644cb75f5e1a
 ```
-
-## Semantic classification
-
-The semantic enum remains unchanged:
-
-```text
-SCOPE_IN
-SCOPE_EXTENSION
-SCOPE_UNCLEAR
-```
-
-Observed runtime examples on the steward-fix deployment:
-
-- request #1 on project #1 -> `SCOPE_EXTENSION`; after both parties approved it, `active_scope_version` advanced from 1 to 2 and the extension was appended;
-- request #2 on project #1 -> `SCOPE_IN` / `ACCEPTED_IN_SCOPE` with no new approval gate.
-
-## Honest limitation
-
-ScopeFlow does not verify that described work was actually performed. It proves the governance state around the committed scope: who accepted it, how requests were classified, whether extensions received the required approvals, and what scope text is currently in force.
 
 ## Frontend
-
-Default contract address in `src/lib/config.ts` is already updated to the steward-fix deployment.
 
 ```bash
 npm install
@@ -93,19 +95,17 @@ npm run build
 npm run dev
 ```
 
-## Live deployment
+Environment:
 
-Live dApp:
-https://scope-flow-one.vercel.app/
+```text
+VITE_CONTRACT_ADDRESS=0x6DcCC0d679515146b1e4c631A9f1215C7C31E8fe
+```
 
-GitHub:
-https://github.com/nikvn89/ScopeFlow
+## Evidence
 
-Live verification:
+See:
 
-- Dashboard reads the canonical steward-fix deployment successfully.
-- Project #1 verified `ACTIVE`, Scope V2, with 2 requests.
-- Project #2 verified `CANCELLED` and read-only.
-- Steward runtime suite T1–T8 passed on StudioNet.
-
-The steward-fixed contract and frontend have been redeployed and verified live on StudioNet. This repository is the final resubmission build.
+- `MILESTONE_1_EVIDENCE.md` — fresh StudioNet runtime proof and milestone comparison;
+- `MILESTONE_1_RUNTIME_TEST.md` — executed load-bearing runtime sequence;
+- `TESTING.md` — baseline and milestone testing notes;
+- `docs/evidence/` — runtime screenshots and captured local test output.

@@ -1,0 +1,60 @@
+
+> scopeflow-genlayer@0.4.0 test:ledger
+> node tests/run-ledger.mjs
+
+PASS 01  candidate is versioned v0.4.0
+PASS 02  implementation class remains ScopeGuard
+PASS 03  SCOPE_IN enum preserved
+PASS 04  SCOPE_EXTENSION enum preserved
+PASS 05  SCOPE_UNCLEAR enum preserved
+PASS 06  6000-character scope cap preserved
+PASS 07  request cap preserved
+PASS 08  submission cooldown preserved
+PASS 09  baseline ABI method preserved: create_project
+PASS 10  baseline ABI method preserved: accept_project
+PASS 11  baseline ABI method preserved: cancel_project
+PASS 12  baseline ABI method preserved: submit_request
+PASS 13  baseline ABI method preserved: approve_extension
+PASS 14  baseline ABI method preserved: reject_extension
+PASS 15  baseline ABI method preserved: get_registry
+PASS 16  baseline ABI method preserved: get_project
+PASS 17  baseline ABI method preserved: get_request
+PASS 18  baseline ABI method preserved: get_requests
+PASS 19  baseline ABI method preserved: get_projects_by_client
+PASS 20  new ledger ABI method exists: get_scope_version
+PASS 21  new ledger ABI method exists: get_scope_versions
+PASS 22  ledger storage declared: project_scope_version_counts
+PASS 23  ledger storage declared: scope_version_scopes
+PASS 24  ledger storage declared: scope_version_previous
+PASS 25  ledger storage declared: scope_version_request_ids
+PASS 26  ledger storage declared: scope_version_effective_at
+PASS 27  ledger storage declared: scope_version_client_approved
+PASS 28  ledger storage declared: scope_version_contractor_approved
+PASS 29  new project starts with zero effective snapshots
+PASS 30  contractor acceptance creates effective V1
+PASS 31  V1 provenance identifies initial scope
+PASS 32  approved extensions advance monotonically
+PASS 33  ledger count advances with active version
+PASS 34  supersession guard preserved
+PASS 35  terminal apply replay guard preserved
+PASS 36  rejected extension cannot be applied
+PASS 37  capacity rollback guard preserved
+PASS 38  project view exposes ledger count
+PASS 39  registry advertises candidate version
+PASS 40  registry advertises ledger capability
+PASS 41  pre-acceptance ledger is empty
+PASS 42  acceptance snapshots exact V1 text
+PASS 43  one approval does not create V2
+PASS 44  two approvals create V2
+PASS 45  V2 links to originating request
+PASS 46  V1 remains immutable after V2
+PASS 47  superseded V1 request cannot mutate V2
+PASS 48  V2 request can create V3
+PASS 49  V3 provenance points to V2 request
+PASS 50  V1 remains immutable after V3
+PASS 51  property sweep preserved ledger invariants across 5000 traces
+PASS 52  property sweep exercised 80313 generated transitions
+
+Contract SHA256: 4b80a8cec6309dbb6e6a082ce913899cb6d36059bc07a8380277644cb75f5e1a
+52/52 directed/source checks passed
+Property sweep: 5000 traces / 80313 transitions / 0 invariant failures

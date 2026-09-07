@@ -11,12 +11,16 @@ import {
   readProjectsByClient,
   readRegistry,
   readRequestPage,
+  readScopeVersion,
+  readScopeVersions,
   rejectExtension,
   submitRequest,
   type ClientProjectSummary,
   type RegistryState,
   type ScopeProject,
   type ScopeRequest,
+  type ScopeVersionDetail,
+  type ScopeVersionSummary,
   type WriteOutcome,
 } from './lib/genlayer'
 import {
@@ -68,6 +72,11 @@ function humanClassification(value: string) {
 
 function humanStatus(value: string) {
   return value.replaceAll('_', ' ')
+}
+
+function formatUnix(value: number) {
+  if (!value) return '—'
+  return new Date(value * 1000).toLocaleString()
 }
 
 function badgeClass(value: string) {
@@ -269,6 +278,9 @@ export default function App() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const [project, setProject] = useState<ScopeProject | null>(null)
   const [requests, setRequests] = useState<ScopeRequest[]>([])
+  const [scopeVersions, setScopeVersions] = useState<ScopeVersionSummary[]>([])
+  const [selectedVersion, setSelectedVersion] = useState<ScopeVersionDetail | null>(null)
+  const [loadingVersion, setLoadingVersion] = useState(false)
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('project')
   const [pageStart, setPageStart] = useState(1)
 
@@ -328,6 +340,21 @@ export default function App() {
         setSelectedProjectId(projectId)
         rememberProjectId(projectId)
         setRecentProjects(getRecentProjectIds())
+
+        const ledgerCount = nextProject.scope_version_count ?? 0
+        if (ledgerCount > 0) {
+          const ledgerPage = await readScopeVersions(
+            projectId,
+            1,
+            Math.min(20, ledgerCount),
+          )
+          setScopeVersions(ledgerPage.items)
+          const detail = await readScopeVersion(projectId, nextProject.active_scope_version)
+          setSelectedVersion(detail)
+        } else {
+          setScopeVersions([])
+          setSelectedVersion(null)
+        }
 
         if (nextProject.request_count === 0) {
           setRequests([])
@@ -616,10 +643,30 @@ export default function App() {
     }
   }
 
+  async function handleOpenScopeVersion(version: number) {
+    if (!project || loadingVersion) return
+    setLoadingVersion(true)
+    try {
+      const detail = await readScopeVersion(project.project_id, version)
+      setSelectedVersion(detail)
+    } catch (error) {
+      console.error('ScopeFlow scope version read error:', error)
+      setNotice({
+        kind: 'error',
+        title: 'Could not load scope version',
+        message: normalizeError(error),
+      })
+    } finally {
+      setLoadingVersion(false)
+    }
+  }
+
   function closeProject() {
     setSelectedProjectId(null)
     setProject(null)
     setRequests([])
+    setScopeVersions([])
+    setSelectedVersion(null)
     setWorkspaceTab('project')
     setOpenIdInput('')
     void refreshDashboard(account)
@@ -682,7 +729,7 @@ export default function App() {
                 onClick={() => setWorkspaceTab('history')}
               >
                 <span className="nav-icon">↺</span>
-                History
+                Scope ledger
               </button>
             </>
           )}
@@ -1012,7 +1059,7 @@ export default function App() {
                 className={workspaceTab === 'history' ? 'tab active' : 'tab'}
                 onClick={() => setWorkspaceTab('history')}
               >
-                History
+                Scope ledger
               </button>
             </nav>
 
@@ -1141,8 +1188,12 @@ export default function App() {
 
                   <section className="panel stats-card">
                     <div>
-                      <small>Scope version</small>
+                      <small>Active version</small>
                       <strong>{project.active_scope_version}</strong>
+                    </div>
+                    <div>
+                      <small>Ledger snapshots</small>
+                      <strong>{project.scope_version_count ?? 0}</strong>
                     </div>
                     <div>
                       <small>Requests</small>
@@ -1263,8 +1314,141 @@ export default function App() {
               <section className="history-section">
                 <div className="section-heading">
                   <div>
-                    <span className="eyebrow">APPEND-ONLY HISTORY</span>
-                    <h2>Project #{project.project_id} decisions</h2>
+                    <span className="eyebrow">IMMUTABLE SCOPE VERSION LEDGER</span>
+                    <h2>Effective scope provenance</h2>
+                    <p className="section-copy">
+                      Every effective scope is snapshotted on-chain. V1 is created when the
+                      Contractor accepts the Client-committed scope; later versions are created
+                      only after both parties approve an extension.
+                    </p>
+                  </div>
+                  <span className="ledger-count">
+                    {project.scope_version_count ?? 0} snapshots
+                  </span>
+                </div>
+
+                {(project.scope_version_count ?? 0) === 0 ? (
+                  <div className="panel empty-state">
+                    No effective scope snapshot exists yet. The first immutable snapshot is
+                    created when the named Contractor accepts this project.
+                  </div>
+                ) : (
+                  <div className="ledger-layout">
+                    <div className="ledger-timeline">
+                      {scopeVersions.map((version) => (
+                        <button
+                          key={version.version}
+                          className={
+                            selectedVersion?.version === version.version
+                              ? 'ledger-node selected'
+                              : 'ledger-node'
+                          }
+                          onClick={() => void handleOpenScopeVersion(version.version)}
+                          disabled={loadingVersion}
+                        >
+                          <span className="ledger-rail" />
+                          <span className="ledger-dot" />
+                          <span className="ledger-node-copy">
+                            <span className="ledger-node-top">
+                              <strong>Scope V{version.version}</strong>
+                              {version.active && <span className="badge badge-good">ACTIVE</span>}
+                            </span>
+                            <small>
+                              {version.origin === 'INITIAL_SCOPE'
+                                ? 'Initial scope · Contractor accepted'
+                                : `Approved extension · Request #${version.originating_request_id}`}
+                            </small>
+                            <small>{formatUnix(version.effective_at)}</small>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="panel ledger-detail">
+                      {selectedVersion ? (
+                        <>
+                          <div className="panel-heading">
+                            <div>
+                              <span className="eyebrow">VERSION SNAPSHOT</span>
+                              <h2>Scope V{selectedVersion.version}</h2>
+                            </div>
+                            {selectedVersion.active && (
+                              <span className="badge badge-good">CURRENT</span>
+                            )}
+                          </div>
+
+                          <div className="ledger-facts">
+                            <div>
+                              <small>Previous version</small>
+                              <strong>
+                                {selectedVersion.previous_version === 0
+                                  ? 'Genesis'
+                                  : `V${selectedVersion.previous_version}`}
+                              </strong>
+                            </div>
+                            <div>
+                              <small>Origin</small>
+                              <strong>{humanStatus(selectedVersion.origin)}</strong>
+                            </div>
+                            <div>
+                              <small>Origin request</small>
+                              <strong>
+                                {selectedVersion.originating_request_id === 0
+                                  ? 'Initial agreement'
+                                  : `#${selectedVersion.originating_request_id}`}
+                              </strong>
+                            </div>
+                            <div>
+                              <small>Effective</small>
+                              <strong>{formatUnix(selectedVersion.effective_at)}</strong>
+                            </div>
+                          </div>
+
+                          {selectedVersion.extension_text && (
+                            <div className="ledger-extension">
+                              <span>Change that created this version</span>
+                              <p>{selectedVersion.extension_text}</p>
+                              <div className="approval-grid">
+                                <div className={selectedVersion.client_approved ? 'approval approved' : 'approval'}>
+                                  <span>Client</span>
+                                  <strong>{selectedVersion.client_approved ? 'Approved' : 'Not approved'}</strong>
+                                </div>
+                                <div className={selectedVersion.contractor_approved ? 'approval approved' : 'approval'}>
+                                  <span>Contractor</span>
+                                  <strong>{selectedVersion.contractor_approved ? 'Approved' : 'Not approved'}</strong>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="scope-document ledger-snapshot">
+                            <span className="eyebrow">FULL EFFECTIVE SCOPE SNAPSHOT</span>
+                            {selectedVersion.scope_text
+                              .split('<<<SCOPEGUARD_APPROVED_EXTENSION>>>')
+                              .map((part, index) => (
+                                <div key={`${selectedVersion.version}-${index}-${part.slice(0, 16)}`}>
+                                  {index > 0 && (
+                                    <div className="extension-divider">Approved extension</div>
+                                  )}
+                                  <p>{part.trim()}</p>
+                                </div>
+                              ))}
+                          </div>
+                          <small className="ledger-proof-note">
+                            {selectedVersion.scope_length} characters · historical snapshots have no write path.
+                          </small>
+                        </>
+                      ) : (
+                        <div className="empty-state">Select a version to inspect its immutable snapshot.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="section-heading history-audit-heading">
+                  <div>
+                    <span className="eyebrow">REQUEST AUDIT TRAIL</span>
+                    <h2>Classification and approval history</h2>
                   </div>
                 </div>
 

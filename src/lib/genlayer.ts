@@ -5,6 +5,8 @@ import { CONTRACT_ADDRESS, EXPLORER_BASE } from './config'
 
 export type RegistryState = {
   project_count: number
+  contract_version?: string
+  scope_version_ledger?: boolean
 }
 
 export type ScopeProject = {
@@ -16,6 +18,7 @@ export type ScopeProject = {
   scope_length: number
   scope_capacity_left: number
   request_count: number
+  scope_version_count?: number
   accepted: boolean
   accepted_at: number
   cancelled: boolean
@@ -28,6 +31,7 @@ export type ClientProjectSummary = {
   contractor: string
   active_scope_version: number
   request_count: number
+  scope_version_count?: number
   accepted: boolean
   cancelled: boolean
   status: 'PENDING_CONTRACTOR_ACCEPTANCE' | 'ACTIVE' | 'CANCELLED' | string
@@ -55,6 +59,33 @@ export type ScopeRequest = {
   applied?: boolean
   created_at?: number
   status: string
+}
+
+
+export type ScopeVersionSummary = {
+  version: number
+  previous_version: number
+  origin: 'INITIAL_SCOPE' | 'APPROVED_EXTENSION' | string
+  originating_request_id: number
+  extension_text: string
+  scope_length: number
+  effective_at: number
+  client_approved: boolean
+  contractor_approved: boolean
+  active: boolean
+}
+
+export type ScopeVersionDetail = ScopeVersionSummary & {
+  project_id: number
+  scope_text: string
+}
+
+export type ScopeVersionPage = {
+  project_id: number
+  from_version: number
+  count: number
+  total: number
+  items: ScopeVersionSummary[]
 }
 
 export type RequestPage = {
@@ -172,6 +203,33 @@ export async function readRequestPage(
   })
 
   return parseJsonResult<RequestPage>(result)
+}
+
+export async function readScopeVersion(
+  projectId: number,
+  version: number,
+): Promise<ScopeVersionDetail> {
+  const result = await readClient.readContract({
+    address: CONTRACT_ADDRESS,
+    functionName: 'get_scope_version',
+    args: [projectId, version],
+  })
+
+  return parseJsonResult<ScopeVersionDetail>(result)
+}
+
+export async function readScopeVersions(
+  projectId: number,
+  fromVersion = 1,
+  count = 20,
+): Promise<ScopeVersionPage> {
+  const result = await readClient.readContract({
+    address: CONTRACT_ADDRESS,
+    functionName: 'get_scope_versions',
+    args: [projectId, fromVersion, count],
+  })
+
+  return parseJsonResult<ScopeVersionPage>(result)
 }
 
 export async function readRequest(
