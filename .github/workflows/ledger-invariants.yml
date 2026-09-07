@@ -1,0 +1,27 @@
+name: Scope Ledger Invariants
+
+on:
+  push:
+    paths:
+      - 'contracts/ScopeFlow.py'
+      - 'tests/ledger_model.test.py'
+      - 'tests/run-ledger.mjs'
+      - '.github/workflows/ledger-invariants.yml'
+  pull_request:
+    paths:
+      - 'contracts/ScopeFlow.py'
+      - 'tests/ledger_model.test.py'
+      - 'tests/run-ledger.mjs'
+
+jobs:
+  ledger-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/run-ledger.mjs
