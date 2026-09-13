@@ -1,12 +1,16 @@
 import { createClient } from 'genlayer-js'
 import { studionet } from 'genlayer-js/chains'
-import { TransactionStatus } from 'genlayer-js/types'
+import { ExecutionResult, TransactionStatus } from 'genlayer-js/types'
 import { CONTRACT_ADDRESS, EXPLORER_BASE } from './config'
 
 export type RegistryState = {
   project_count: number
   contract_version?: string
   scope_version_ledger?: boolean
+  lifecycle_finality?: boolean
+  default_acceptance_window_seconds?: number
+  min_acceptance_window_seconds?: number
+  max_acceptance_window_seconds?: number
 }
 
 export type ScopeProject = {
@@ -22,7 +26,30 @@ export type ScopeProject = {
   accepted: boolean
   accepted_at: number
   cancelled: boolean
-  status: 'PENDING_CONTRACTOR_ACCEPTANCE' | 'ACTIVE' | 'CANCELLED' | string
+  cancelled_at: number
+  acceptance_deadline: number
+  acceptance_seconds_remaining: number
+  declined: boolean
+  declined_at: number
+  expired: boolean
+  expiry_recorded: boolean
+  expired_at: number
+  closed: boolean
+  closed_at: number
+  closed_scope_version: number
+  client_close_vote_version: number
+  contractor_close_vote_version: number
+  client_close_approved: boolean
+  contractor_close_approved: boolean
+  terminal: boolean
+  status:
+    | 'PENDING_CONTRACTOR_ACCEPTANCE'
+    | 'ACTIVE'
+    | 'CANCELLED'
+    | 'DECLINED'
+    | 'EXPIRED'
+    | 'CLOSED'
+    | string
   created_at: number
 }
 
@@ -34,7 +61,18 @@ export type ClientProjectSummary = {
   scope_version_count?: number
   accepted: boolean
   cancelled: boolean
-  status: 'PENDING_CONTRACTOR_ACCEPTANCE' | 'ACTIVE' | 'CANCELLED' | string
+  declined?: boolean
+  expired?: boolean
+  closed?: boolean
+  acceptance_deadline?: number
+  status:
+    | 'PENDING_CONTRACTOR_ACCEPTANCE'
+    | 'ACTIVE'
+    | 'CANCELLED'
+    | 'DECLINED'
+    | 'EXPIRED'
+    | 'CLOSED'
+    | string
   created_at: number
 }
 
@@ -97,7 +135,8 @@ export type RequestPage = {
 }
 
 export type WriteOutcome =
-  | { kind: 'accepted'; hash: `0x${string}` }
+  | { kind: 'succeeded'; hash: `0x${string}` }
+  | { kind: 'failed'; hash: `0x${string}`; error: string }
   | { kind: 'submitted'; hash: `0x${string}`; warning: string }
 
 const readClient = createClient({
@@ -275,24 +314,17 @@ async function submitWrite(
     value: 0n,
   })
 
+  let receipt: Record<string, unknown>
+
   try {
-    const receipt = (await Promise.race([
+    receipt = (await Promise.race([
       readClient.waitForTransactionReceipt({
         hash,
-        status: TransactionStatus.ACCEPTED,
+        status: TransactionStatus.FINALIZED,
       }),
       timeoutAfter(90_000),
     ])) as Record<string, unknown>
 
-    const executionName = String(receipt?.txExecutionResultName ?? '')
-
-    if (/ERROR/i.test(executionName)) {
-      throw new Error(
-        `Contract execution failed. Open the transaction in Explorer: ${EXPLORER_BASE}/transactions/${hash}`,
-      )
-    }
-
-    return { kind: 'accepted', hash }
   } catch (error) {
     console.error('Receipt monitoring after submitted transaction:', error)
 
@@ -303,6 +335,28 @@ async function submitWrite(
         'Transaction was submitted, but automatic confirmation is delayed. Do not submit it again. Open Explorer or use Refresh.',
     }
   }
+
+  const executionName = receipt.txExecutionResultName
+
+  if (executionName === ExecutionResult.FINISHED_WITH_ERROR) {
+    return {
+      kind: 'failed',
+      hash,
+      error:
+        'Consensus accepted the transaction, but contract execution returned FINISHED_WITH_ERROR. No success is claimed; the project state was refreshed for rollback verification.',
+    }
+  }
+
+  if (executionName !== ExecutionResult.FINISHED_WITH_RETURN) {
+    return {
+      kind: 'submitted',
+      hash,
+      warning:
+        'Consensus accepted the transaction, but execution success is not yet explicit. Do not repeat it; verify the transaction and refresh state.',
+    }
+  }
+
+  return { kind: 'succeeded', hash }
 }
 
 export function createProject(
@@ -311,6 +365,19 @@ export function createProject(
   initialScope: string,
 ) {
   return submitWrite(account, 'create_project', [contractor, initialScope])
+}
+
+export function createProjectWithWindow(
+  account: `0x${string}`,
+  contractor: string,
+  initialScope: string,
+  acceptanceWindowSeconds: number,
+) {
+  return submitWrite(account, 'create_project_with_window', [
+    contractor,
+    initialScope,
+    acceptanceWindowSeconds,
+  ])
 }
 
 export function acceptProject(
@@ -325,6 +392,27 @@ export function cancelProject(
   projectId: number,
 ) {
   return submitWrite(account, 'cancel_project', [projectId])
+}
+
+export function declineProject(
+  account: `0x${string}`,
+  projectId: number,
+) {
+  return submitWrite(account, 'decline_project', [projectId])
+}
+
+export function expireProject(
+  account: `0x${string}`,
+  projectId: number,
+) {
+  return submitWrite(account, 'expire_project', [projectId])
+}
+
+export function approveClose(
+  account: `0x${string}`,
+  projectId: number,
+) {
+  return submitWrite(account, 'approve_close', [projectId])
 }
 
 export function submitRequest(
