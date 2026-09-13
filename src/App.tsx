@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   acceptProject,
+  approveClose,
   approveExtension,
   cancelProject,
   connectWallet,
-  createProject,
+  createProjectWithWindow,
+  declineProject,
   explorerAddressUrl,
   explorerTxUrl,
+  expireProject,
   readProject,
   readProjectsByClient,
   readRegistry,
+  readRequest,
   readRequestPage,
   readScopeVersion,
   readScopeVersions,
@@ -79,6 +83,16 @@ function formatUnix(value: number) {
   return new Date(value * 1000).toLocaleString()
 }
 
+function formatDuration(value: number) {
+  if (value <= 0) return '0m'
+  const days = Math.floor(value / 86400)
+  const hours = Math.floor((value % 86400) / 3600)
+  const minutes = Math.ceil((value % 3600) / 60)
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
+}
+
 function badgeClass(value: string) {
   if (
     value === 'SCOPE_IN' ||
@@ -105,12 +119,27 @@ function badgeClass(value: string) {
   return 'badge badge-neutral'
 }
 
+function projectStatusBadge(status: string) {
+  if (status === 'ACTIVE') return badgeClass('SCOPE_IN')
+  if (status === 'PENDING_CONTRACTOR_ACCEPTANCE') return badgeClass('SCOPE_EXTENSION')
+  return badgeClass('REJECTED_EXTENSION')
+}
+
 function txSummary(outcome: WriteOutcome): Notice {
-  if (outcome.kind === 'accepted') {
+  if (outcome.kind === 'succeeded') {
     return {
       kind: 'success',
-      title: 'Transaction accepted',
-      message: 'The transaction reached ACCEPTED status. On-chain state can now be refreshed.',
+      title: 'Execution succeeded',
+      message: 'Consensus and contract execution both succeeded. Verifying the on-chain postcondition now.',
+      hash: outcome.hash,
+    }
+  }
+
+  if (outcome.kind === 'failed') {
+    return {
+      kind: 'error',
+      title: 'Execution failed',
+      message: outcome.error,
       hash: outcome.hash,
     }
   }
@@ -286,6 +315,7 @@ export default function App() {
 
   const [contractorInput, setContractorInput] = useState('')
   const [scopeInput, setScopeInput] = useState('')
+  const [acceptanceWindowInput, setAcceptanceWindowInput] = useState('600')
   const [openIdInput, setOpenIdInput] = useState('')
   const [requestText, setRequestText] = useState('')
 
@@ -343,12 +373,16 @@ export default function App() {
 
         const ledgerCount = nextProject.scope_version_count ?? 0
         if (ledgerCount > 0) {
-          const ledgerPage = await readScopeVersions(
-            projectId,
-            1,
-            Math.min(20, ledgerCount),
-          )
-          setScopeVersions(ledgerPage.items)
+          const allVersions: ScopeVersionSummary[] = []
+          for (let start = 1; start <= ledgerCount; start += PAGE_SIZE) {
+            const ledgerPage = await readScopeVersions(
+              projectId,
+              start,
+              Math.min(PAGE_SIZE, ledgerCount - start + 1),
+            )
+            allVersions.push(...ledgerPage.items)
+          }
+          setScopeVersions(allVersions)
           const detail = await readScopeVersion(projectId, nextProject.active_scope_version)
           setSelectedVersion(detail)
         } else {
@@ -463,6 +497,10 @@ export default function App() {
     try {
       const outcome = await fn()
       setNotice(txSummary(outcome))
+      if (outcome.kind === 'failed' && project) {
+        await new Promise((resolve) => window.setTimeout(resolve, 500))
+        await openProject(project.project_id, pageStart)
+      }
       return outcome
     } catch (error) {
       console.error(`ScopeFlow ${key} error:`, error)
@@ -477,6 +515,30 @@ export default function App() {
     }
   }
 
+  async function verifyPostcondition(
+    outcome: Extract<WriteOutcome, { kind: 'succeeded' }>,
+    verify: () => Promise<boolean>,
+    failureMessage: string,
+  ) {
+    try {
+      if (await verify()) return true
+      setNotice({
+        kind: 'error',
+        title: 'Postcondition not verified',
+        message: failureMessage,
+        hash: outcome.hash,
+      })
+    } catch (error) {
+      setNotice({
+        kind: 'error',
+        title: 'Postcondition read failed',
+        message: normalizeError(error),
+        hash: outcome.hash,
+      })
+    }
+    return false
+  }
+
   async function handleCreateProject() {
     if (!account) {
       setNotice({
@@ -489,6 +551,7 @@ export default function App() {
 
     const contractor = contractorInput.trim()
     const scope = scopeInput.trim()
+    const acceptanceWindow = Number(acceptanceWindowInput)
 
     if (!isAddress(contractor)) {
       setNotice({
@@ -517,31 +580,60 @@ export default function App() {
       return
     }
 
+    if (
+      !Number.isInteger(acceptanceWindow) ||
+      acceptanceWindow < 300 ||
+      acceptanceWindow > 2_592_000
+    ) {
+      setNotice({
+        kind: 'error',
+        title: 'Invalid acceptance window',
+        message: 'Acceptance window must be between 300 seconds (5 minutes) and 2,592,000 seconds (30 days).',
+      })
+      return
+    }
+
+    let expectedProjectId: number
+    try {
+      expectedProjectId = (await readRegistry()).project_count + 1
+    } catch (error) {
+      setNotice({
+        kind: 'error',
+        title: 'Could not establish pre-state',
+        message: normalizeError(error),
+      })
+      return
+    }
+
     const outcome = await executeWrite('create-project', () =>
-      createProject(account, contractor, scope),
+      createProjectWithWindow(account, contractor, scope, acceptanceWindow),
     )
 
-    if (!outcome || outcome.kind !== 'accepted') return
+    if (!outcome || outcome.kind !== 'succeeded') return
 
     await new Promise((resolve) => window.setTimeout(resolve, 1200))
-    await refreshDashboard(account)
 
     try {
-      const page = await readProjectsByClient(account, 1, PAGE_SIZE)
-      const latest = [...page.items].sort((a, b) => b.project_id - a.project_id)[0]
-
-      if (latest) {
-        setContractorInput('')
-        setScopeInput('')
-        await openProject(latest.project_id)
-        setWorkspaceTab('project')
+      const created = await readProject(expectedProjectId)
+      if (
+        !sameAddress(created.client, account) ||
+        !sameAddress(created.contractor, contractor) ||
+        created.status !== 'PENDING_CONTRACTOR_ACCEPTANCE'
+      ) {
+        throw new Error('Creation receipt succeeded, but the expected project postcondition was not found.')
       }
+
+      setContractorInput('')
+      setScopeInput('')
+      await refreshDashboard(account)
+      await openProject(expectedProjectId)
+      setWorkspaceTab('project')
     } catch (error) {
       console.error('Could not auto-open created project:', error)
       setNotice({
-        kind: 'info',
-        title: 'Project created',
-        message: 'Creation was accepted. Refresh My Projects to open the new project.',
+        kind: 'error',
+        title: 'Postcondition not verified',
+        message: normalizeError(error),
         hash: outcome.hash,
       })
     }
@@ -570,8 +662,17 @@ export default function App() {
       acceptProject(account, project.project_id),
     )
 
-    if (outcome?.kind === 'accepted') {
+    if (outcome?.kind === 'succeeded') {
       await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => {
+          const next = await readProject(project.project_id)
+          return next.status === 'ACTIVE' && (next.scope_version_count ?? 0) === 1
+        },
+        'Acceptance executed, but ACTIVE state with exact V1 was not observed.',
+      )
+      if (!verified) return
       await openProject(project.project_id, pageStart)
     }
   }
@@ -583,8 +684,83 @@ export default function App() {
       cancelProject(account, project.project_id),
     )
 
-    if (outcome?.kind === 'accepted') {
+    if (outcome?.kind === 'succeeded') {
       await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => (await readProject(project.project_id)).status === 'CANCELLED',
+        'Cancellation executed, but terminal CANCELLED state was not observed.',
+      )
+      if (!verified) return
+      await openProject(project.project_id, pageStart)
+    }
+  }
+
+  async function handleDeclineProject() {
+    if (!account || !project) return
+
+    const outcome = await executeWrite('decline-project', () =>
+      declineProject(account, project.project_id),
+    )
+
+    if (outcome?.kind === 'succeeded') {
+      await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => (await readProject(project.project_id)).status === 'DECLINED',
+        'Decline executed, but terminal DECLINED state was not observed.',
+      )
+      if (!verified) return
+      await openProject(project.project_id, pageStart)
+    }
+  }
+
+  async function handleExpireProject() {
+    if (!account || !project) return
+
+    const outcome = await executeWrite('expire-project', () =>
+      expireProject(account, project.project_id),
+    )
+
+    if (outcome?.kind === 'succeeded') {
+      await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => {
+          const next = await readProject(project.project_id)
+          return next.status === 'EXPIRED' && next.expiry_recorded
+        },
+        'Expiry executed, but recorded terminal EXPIRED state was not observed.',
+      )
+      if (!verified) return
+      await openProject(project.project_id, pageStart)
+    }
+  }
+
+  async function handleApproveClose() {
+    if (!account || !project || role === 'OBSERVER') return
+
+    const votingRole = role
+    const votingVersion = project.active_scope_version
+    const outcome = await executeWrite('approve-close', () =>
+      approveClose(account, project.project_id),
+    )
+
+    if (outcome?.kind === 'succeeded') {
+      await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => {
+          const next = await readProject(project.project_id)
+          const voteObserved =
+            votingRole === 'CLIENT'
+              ? next.client_close_vote_version === votingVersion
+              : next.contractor_close_vote_version === votingVersion
+          return voteObserved && (!next.closed || next.closed_scope_version === votingVersion)
+        },
+        'Close approval executed, but its current-version vote or final closed version was not observed.',
+      )
+      if (!verified) return
       await openProject(project.project_id, pageStart)
     }
   }
@@ -593,6 +769,7 @@ export default function App() {
     if (!account || !project) return
 
     const clean = requestText.trim()
+    const expectedRequestId = project.request_count + 1
 
     if (
       clean.length < MIN_REQUEST_LENGTH ||
@@ -610,9 +787,22 @@ export default function App() {
       submitRequest(account, project.project_id, clean),
     )
 
-    if (outcome?.kind === 'accepted') {
-      setRequestText('')
+    if (outcome?.kind === 'succeeded') {
       await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => {
+          const created = await readRequest(project.project_id, expectedRequestId)
+          return (
+            created.request_id === expectedRequestId &&
+            created.request_text === clean &&
+            created.classified_against_version === project.active_scope_version
+          )
+        },
+        'Request execution succeeded, but the exact new request record was not observed.',
+      )
+      if (!verified) return
+      setRequestText('')
       await openProject(project.project_id, pageStart)
     }
   }
@@ -620,12 +810,37 @@ export default function App() {
   async function handleApprove(requestId: number) {
     if (!account || !project) return
 
+    const votingRole = role
+    const versionBefore = project.active_scope_version
+
     const outcome = await executeWrite(`approve-${requestId}`, () =>
       approveExtension(account, project.project_id, requestId),
     )
 
-    if (outcome?.kind === 'accepted') {
+    if (outcome?.kind === 'succeeded') {
       await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => {
+          const [nextProject, nextRequest] = await Promise.all([
+            readProject(project.project_id),
+            readRequest(project.project_id, requestId),
+          ])
+          const voteObserved =
+            nextRequest.applied ||
+            (votingRole === 'CLIENT'
+              ? nextRequest.client_approved
+              : votingRole === 'CONTRACTOR'
+                ? nextRequest.contractor_approved
+                : false)
+          const versionValid = nextRequest.applied
+            ? nextProject.active_scope_version === versionBefore + 1
+            : nextProject.active_scope_version === versionBefore
+          return voteObserved && versionValid
+        },
+        'Approval executed, but the party vote or exact scope-version transition was not observed.',
+      )
+      if (!verified) return
       await openProject(project.project_id, pageStart)
     }
   }
@@ -637,8 +852,16 @@ export default function App() {
       rejectExtension(account, project.project_id, requestId),
     )
 
-    if (outcome?.kind === 'accepted') {
+    if (outcome?.kind === 'succeeded') {
       await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () =>
+          (await readRequest(project.project_id, requestId)).status ===
+          'REJECTED_EXTENSION',
+        'Rejection executed, but terminal REJECTED_EXTENSION state was not observed.',
+      )
+      if (!verified) return
       await openProject(project.project_id, pageStart)
     }
   }
@@ -793,7 +1016,8 @@ export default function App() {
                 <h1>Keep project scope clear as the work evolves.</h1>
                 <p>
                   Lock the agreed scope, submit change requests, and let GenLayer classify
-                  whether each request is already covered, extends the agreement, or needs clarification.
+                  whether each request is covered. Deterministic deadlines, decline, expiry,
+                  and version-pinned mutual close keep every project lifecycle finite.
                 </p>
                 <div className="hero-actions">
                   <a className="button button-hero" href="#create-project">Create a project</a>
@@ -812,7 +1036,11 @@ export default function App() {
                     {registry?.project_count ?? '—'}{' '}
                     {registry?.project_count === 1 ? 'project' : 'projects'}
                   </strong>
-                  <span>Scope decisions backed by validator consensus</span>
+                  <span>
+                    {registry?.lifecycle_finality
+                      ? 'Lifecycle finality active'
+                      : 'Reading lifecycle capability…'}
+                  </span>
                 </div>
               </div>
             </section>
@@ -829,9 +1057,9 @@ export default function App() {
                 <small>{account ? 'Created by this wallet' : 'Connect wallet to load'}</small>
               </div>
               <div className="metric-card">
-                <span>Decision paths</span>
-                <strong>3</strong>
-                <small>In scope · Extension · Unclear</small>
+                <span>Terminal outcomes</span>
+                <strong>4</strong>
+                <small>Cancelled · Declined · Expired · Closed</small>
               </div>
               <a className="metric-card metric-link" href={explorerAddressUrl()} target="_blank" rel="noreferrer">
                 <span>Contract</span>
@@ -881,6 +1109,21 @@ export default function App() {
                   />
                 </label>
 
+                <label>
+                  <span>Contractor acceptance window (seconds)</span>
+                  <input
+                    type="number"
+                    min="300"
+                    max="2592000"
+                    step="60"
+                    value={acceptanceWindowInput}
+                    onChange={(event) => setAcceptanceWindowInput(event.target.value)}
+                  />
+                  <small className="field-note">
+                    300 seconds = 5 minutes for runtime testing. Maximum: 30 days.
+                  </small>
+                </label>
+
                 <div className="input-footer">
                   <span>
                     {scopeInput.length} / {MAX_SCOPE_LENGTH}
@@ -891,7 +1134,9 @@ export default function App() {
                       busy !== null ||
                       !account ||
                       !isAddress(contractorInput) ||
-                      scopeInput.trim().length < MIN_SCOPE_LENGTH
+                      scopeInput.trim().length < MIN_SCOPE_LENGTH ||
+                      Number(acceptanceWindowInput) < 300 ||
+                      Number(acceptanceWindowInput) > 2_592_000
                     }
                     onClick={() => void handleCreateProject()}
                   >
@@ -965,13 +1210,7 @@ export default function App() {
                             <strong>Project #{item.project_id}</strong>
                             <small>Contractor {shortAddress(item.contractor)}</small>
                           </div>
-                          <span className={badgeClass(
-                            item.status === 'ACTIVE'
-                              ? 'SCOPE_IN'
-                              : item.status === 'CANCELLED'
-                                ? 'REJECTED_EXTENSION'
-                                : 'SCOPE_EXTENSION',
-                          )}>
+                          <span className={projectStatusBadge(item.status)}>
                             {humanStatus(item.status)}
                           </span>
                           <div>
@@ -1018,13 +1257,7 @@ export default function App() {
                   <span className={`workspace-role role-${role.toLowerCase()}`}>
                     {role}
                   </span>
-                  <span className={badgeClass(
-                    project.status === 'ACTIVE'
-                      ? 'SCOPE_IN'
-                      : project.status === 'CANCELLED'
-                        ? 'REJECTED_EXTENSION'
-                        : 'SCOPE_EXTENSION',
-                  )}>
+                  <span className={projectStatusBadge(project.status)}>
                     {humanStatus(project.status)}
                   </span>
                 </div>
@@ -1067,26 +1300,40 @@ export default function App() {
               <div className="project-state-banner project-state-pending">
                 <div>
                   <strong>Scope is not in force yet — waiting for contractor acceptance.</strong>
-                  <span>The committed scope cannot classify requests or accept extensions until the assigned contractor opts in.</span>
+                  <span>
+                    Deadline: {formatUnix(project.acceptance_deadline)} ·{' '}
+                    {formatDuration(project.acceptance_seconds_remaining)} remaining.
+                  </span>
                 </div>
-                {role === 'CONTRACTOR' && (
-                  <button
-                    className="button button-primary"
-                    disabled={busy !== null}
-                    onClick={() => void handleAcceptProject()}
-                  >
-                    {busy === 'accept-project' ? 'Accepting…' : 'Accept project'}
-                  </button>
-                )}
-                {role === 'CLIENT' && (
-                  <button
-                    className="button button-danger"
-                    disabled={busy !== null}
-                    onClick={() => void handleCancelProject()}
-                  >
-                    {busy === 'cancel-project' ? 'Cancelling…' : 'Cancel project'}
-                  </button>
-                )}
+                <div className="lifecycle-actions">
+                  {role === 'CONTRACTOR' && (
+                    <>
+                      <button
+                        className="button button-primary"
+                        disabled={busy !== null}
+                        onClick={() => void handleAcceptProject()}
+                      >
+                        {busy === 'accept-project' ? 'Accepting…' : 'Accept project'}
+                      </button>
+                      <button
+                        className="button button-danger"
+                        disabled={busy !== null}
+                        onClick={() => void handleDeclineProject()}
+                      >
+                        {busy === 'decline-project' ? 'Declining…' : 'Decline project'}
+                      </button>
+                    </>
+                  )}
+                  {role === 'CLIENT' && (
+                    <button
+                      className="button button-danger"
+                      disabled={busy !== null}
+                      onClick={() => void handleCancelProject()}
+                    >
+                      {busy === 'cancel-project' ? 'Cancelling…' : 'Cancel project'}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1095,6 +1342,42 @@ export default function App() {
                 <div>
                   <strong>Project cancelled.</strong>
                   <span>This project was cancelled before contractor acceptance and is now read-only.</span>
+                </div>
+              </div>
+            )}
+
+            {project.status === 'DECLINED' && (
+              <div className="project-state-banner project-state-declined">
+                <div>
+                  <strong>Project declined.</strong>
+                  <span>The assigned Contractor declined before acceptance. This project is terminal and read-only.</span>
+                </div>
+              </div>
+            )}
+
+            {project.status === 'EXPIRED' && (
+              <div className="project-state-banner project-state-expired">
+                <div>
+                  <strong>Acceptance window expired.</strong>
+                  <span>No acceptance, cancellation, or decline can occur after {formatUnix(project.acceptance_deadline)}.</span>
+                </div>
+                {!project.expiry_recorded && account && (
+                  <button
+                    className="button button-secondary"
+                    disabled={busy !== null}
+                    onClick={() => void handleExpireProject()}
+                  >
+                    {busy === 'expire-project' ? 'Recording…' : 'Record expiry'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {project.status === 'CLOSED' && (
+              <div className="project-state-banner project-state-closed">
+                <div>
+                  <strong>Project mutually closed at Scope V{project.closed_scope_version}.</strong>
+                  <span>The final scope ledger is frozen and every pending extension is non-actionable.</span>
                 </div>
               </div>
             )}
@@ -1166,14 +1449,29 @@ export default function App() {
                         <strong>{humanStatus(project.status)}</strong>
                       </div>
                     </div>
+                    <div className="party-row">
+                      <div>
+                        <small>Acceptance deadline</small>
+                        <strong>{formatUnix(project.acceptance_deadline)}</strong>
+                      </div>
+                    </div>
                     {project.status === 'PENDING_CONTRACTOR_ACCEPTANCE' && role === 'CONTRACTOR' && (
-                      <button
-                        className="button button-primary full-width-action"
-                        disabled={busy !== null}
-                        onClick={() => void handleAcceptProject()}
-                      >
-                        {busy === 'accept-project' ? 'Accepting…' : 'Accept project'}
-                      </button>
+                      <div className="stacked-actions full-width-action">
+                        <button
+                          className="button button-primary"
+                          disabled={busy !== null}
+                          onClick={() => void handleAcceptProject()}
+                        >
+                          {busy === 'accept-project' ? 'Accepting…' : 'Accept project'}
+                        </button>
+                        <button
+                          className="button button-danger"
+                          disabled={busy !== null}
+                          onClick={() => void handleDeclineProject()}
+                        >
+                          {busy === 'decline-project' ? 'Declining…' : 'Decline project'}
+                        </button>
+                      </div>
                     )}
                     {project.status === 'PENDING_CONTRACTOR_ACCEPTANCE' && role === 'CLIENT' && (
                       <button
@@ -1185,6 +1483,40 @@ export default function App() {
                       </button>
                     )}
                   </section>
+
+                  {project.status === 'ACTIVE' && (
+                    <section className="panel lifecycle-card">
+                      <span className="eyebrow">MUTUAL CLOSE · SCOPE V{project.active_scope_version}</span>
+                      <p>
+                        Both parties must approve closure against this exact scope version.
+                        Any later approved extension makes older close votes stale.
+                      </p>
+                      <div className="approval-grid">
+                        <div className={project.client_close_approved ? 'approval approved' : 'approval'}>
+                          <span>Client</span>
+                          <strong>{project.client_close_approved ? 'Approved' : 'Pending'}</strong>
+                        </div>
+                        <div className={project.contractor_close_approved ? 'approval approved' : 'approval'}>
+                          <span>Contractor</span>
+                          <strong>{project.contractor_close_approved ? 'Approved' : 'Pending'}</strong>
+                        </div>
+                      </div>
+                      {(role === 'CLIENT' || role === 'CONTRACTOR') && (
+                        <button
+                          className="button button-secondary full-width-action"
+                          disabled={
+                            busy !== null ||
+                            (role === 'CLIENT'
+                              ? project.client_close_approved
+                              : project.contractor_close_approved)
+                          }
+                          onClick={() => void handleApproveClose()}
+                        >
+                          {busy === 'approve-close' ? 'Approving…' : 'Approve project closure'}
+                        </button>
+                      )}
+                    </section>
+                  )}
 
                   <section className="panel stats-card">
                     <div>
@@ -1276,6 +1608,15 @@ export default function App() {
                   )}
                   {project.status === 'CANCELLED' && (
                     <small className="form-reason">This cancelled project is read-only.</small>
+                  )}
+                  {project.status === 'DECLINED' && (
+                    <small className="form-reason">This declined project is terminal and read-only.</small>
+                  )}
+                  {project.status === 'EXPIRED' && (
+                    <small className="form-reason">This expired project is terminal and read-only.</small>
+                  )}
+                  {project.status === 'CLOSED' && (
+                    <small className="form-reason">This mutually closed project is read-only.</small>
                   )}
                 </section>
 

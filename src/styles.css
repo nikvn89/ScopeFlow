@@ -737,3 +737,57 @@ input:focus, textarea:focus {
 @media (max-width: 560px) {
   .ledger-timeline, .ledger-facts { grid-template-columns: 1fr; }
 }
+
+/* Milestone v2 — deterministic lifecycle finality */
+.field-note {
+  display: block;
+  margin-top: 7px;
+  color: #858a9b;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.lifecycle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.stacked-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.project-state-declined,
+.project-state-expired {
+  background: #fff4f2;
+  border-color: #efcbc4;
+}
+
+.project-state-closed {
+  background: #eef9f5;
+  border-color: #bee5d6;
+}
+
+.lifecycle-card {
+  padding: 22px;
+}
+
+.lifecycle-card > p {
+  margin: 10px 0 16px;
+  color: #6d7386;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+  .lifecycle-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .lifecycle-actions .button {
+    flex: 1;
+  }
+}
