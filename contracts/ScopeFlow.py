@@ -1,4 +1,4 @@
-# v0.4.0
+# v0.5.0
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 from genlayer import *
@@ -22,6 +22,9 @@ class ScopeGuard(gl.Contract):
     MAX_REQUEST_LENGTH = 1200
     MAX_REQUESTS_PER_PROJECT = 100
     COOLDOWN_SECONDS = 15
+    DEFAULT_ACCEPTANCE_WINDOW_SECONDS = 604800
+    MIN_ACCEPTANCE_WINDOW_SECONDS = 300
+    MAX_ACCEPTANCE_WINDOW_SECONDS = 2592000
 
     project_counter: u256
 
@@ -34,6 +37,17 @@ class ScopeGuard(gl.Contract):
     project_accepted: TreeMap[u256, bool]
     project_accepted_at: TreeMap[u256, u256]
     project_cancelled: TreeMap[u256, bool]
+    project_cancelled_at: TreeMap[u256, u256]
+    project_acceptance_deadlines: TreeMap[u256, u256]
+    project_declined: TreeMap[u256, bool]
+    project_declined_at: TreeMap[u256, u256]
+    project_expired: TreeMap[u256, bool]
+    project_expired_at: TreeMap[u256, u256]
+    project_closed: TreeMap[u256, bool]
+    project_closed_at: TreeMap[u256, u256]
+    project_closed_versions: TreeMap[u256, u256]
+    project_client_close_vote_versions: TreeMap[u256, u256]
+    project_contractor_close_vote_versions: TreeMap[u256, u256]
 
     # Immutable effective-scope version ledger. A version snapshot is written
     # only when it becomes effective: V1 on contractor acceptance, then one
@@ -454,6 +468,14 @@ or
         ):
             return "APPROVED_EXTENSION"
 
+        if bool(
+            self.project_closed.get(
+                project_key,
+                False,
+            )
+        ):
+            return "PROJECT_CLOSED"
+
         classified_version = int(
             self.request_versions.get(
                 request_key,
@@ -477,12 +499,22 @@ or
     # Writes
     # ----------------------------------------------------------------
 
-    @gl.public.write
-    def create_project(
+    def _create_project(
         self,
         contractor: str,
         initial_scope: str,
+        acceptance_window_seconds: int,
     ) -> None:
+        if (
+            acceptance_window_seconds
+            < self.MIN_ACCEPTANCE_WINDOW_SECONDS
+            or acceptance_window_seconds
+            > self.MAX_ACCEPTANCE_WINDOW_SECONDS
+        ):
+            raise gl.vm.UserError(
+                "Acceptance window must be between 300 and 2592000 seconds"
+            )
+
         contractor_text = contractor.strip()
 
         if contractor_text.lower() == ZERO_ADDRESS:
@@ -525,6 +557,19 @@ or
         self.project_accepted[project_key] = False
         self.project_accepted_at[project_key] = u256(0)
         self.project_cancelled[project_key] = False
+        self.project_cancelled_at[project_key] = u256(0)
+        self.project_acceptance_deadlines[project_key] = u256(
+            now + acceptance_window_seconds
+        )
+        self.project_declined[project_key] = False
+        self.project_declined_at[project_key] = u256(0)
+        self.project_expired[project_key] = False
+        self.project_expired_at[project_key] = u256(0)
+        self.project_closed[project_key] = False
+        self.project_closed_at[project_key] = u256(0)
+        self.project_closed_versions[project_key] = u256(0)
+        self.project_client_close_vote_versions[project_key] = u256(0)
+        self.project_contractor_close_vote_versions[project_key] = u256(0)
         self.project_scope_version_counts[project_key] = u256(0)
 
         client_key = str(client_address).lower()
@@ -548,6 +593,31 @@ or
         ] = project_key
 
     @gl.public.write
+    def create_project(
+        self,
+        contractor: str,
+        initial_scope: str,
+    ) -> None:
+        self._create_project(
+            contractor,
+            initial_scope,
+            self.DEFAULT_ACCEPTANCE_WINDOW_SECONDS,
+        )
+
+    @gl.public.write
+    def create_project_with_window(
+        self,
+        contractor: str,
+        initial_scope: str,
+        acceptance_window_seconds: int,
+    ) -> None:
+        self._create_project(
+            contractor,
+            initial_scope,
+            acceptance_window_seconds,
+        )
+
+    @gl.public.write
     def accept_project(
         self,
         project_id: int,
@@ -566,6 +636,22 @@ or
             raise gl.vm.UserError("Project cancelled")
 
         if bool(
+            self.project_declined.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError("Project declined")
+
+        if bool(
+            self.project_expired.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError("Project expired")
+
+        if bool(
             self.project_accepted.get(
                 project_key,
                 False,
@@ -574,6 +660,15 @@ or
             raise gl.vm.UserError("Project already accepted")
 
         now = self._chain_unix()
+
+        deadline = int(
+            self.project_acceptance_deadlines.get(
+                project_key,
+                u256(0),
+            )
+        )
+        if now >= deadline:
+            raise gl.vm.UserError("Acceptance window expired")
 
         self.project_accepted[project_key] = True
         self.project_accepted_at[project_key] = u256(now)
@@ -620,7 +715,166 @@ or
         ):
             raise gl.vm.UserError("Project already cancelled")
 
+        if bool(
+            self.project_declined.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError("Project declined")
+
+        if bool(
+            self.project_expired.get(
+                project_key,
+                False,
+            )
+        ):
+            raise gl.vm.UserError("Project expired")
+
+        now = self._chain_unix()
+        deadline = int(
+            self.project_acceptance_deadlines.get(
+                project_key,
+                u256(0),
+            )
+        )
+        if now >= deadline:
+            raise gl.vm.UserError("Acceptance window expired")
+
         self.project_cancelled[project_key] = True
+        self.project_cancelled_at[project_key] = u256(now)
+
+    @gl.public.write
+    def decline_project(
+        self,
+        project_id: int,
+    ) -> None:
+        project_key = self._project_key(project_id)
+
+        if self._party_role(project_key) != "CONTRACTOR":
+            raise gl.vm.UserError("Only the contractor may decline")
+
+        if bool(self.project_accepted.get(project_key, False)):
+            raise gl.vm.UserError("Project already accepted")
+        if bool(self.project_cancelled.get(project_key, False)):
+            raise gl.vm.UserError("Project cancelled")
+        if bool(self.project_declined.get(project_key, False)):
+            raise gl.vm.UserError("Project already declined")
+        if bool(self.project_expired.get(project_key, False)):
+            raise gl.vm.UserError("Project expired")
+
+        now = self._chain_unix()
+        deadline = int(
+            self.project_acceptance_deadlines.get(
+                project_key,
+                u256(0),
+            )
+        )
+        if now >= deadline:
+            raise gl.vm.UserError("Acceptance window expired")
+
+        self.project_declined[project_key] = True
+        self.project_declined_at[project_key] = u256(now)
+
+    @gl.public.write
+    def expire_project(
+        self,
+        project_id: int,
+    ) -> None:
+        project_key = self._project_key(project_id)
+
+        if bool(self.project_accepted.get(project_key, False)):
+            raise gl.vm.UserError("Accepted project cannot expire")
+        if bool(self.project_cancelled.get(project_key, False)):
+            raise gl.vm.UserError("Project cancelled")
+        if bool(self.project_declined.get(project_key, False)):
+            raise gl.vm.UserError("Project declined")
+        if bool(self.project_expired.get(project_key, False)):
+            raise gl.vm.UserError("Project already expired")
+
+        now = self._chain_unix()
+        deadline = int(
+            self.project_acceptance_deadlines.get(
+                project_key,
+                u256(0),
+            )
+        )
+        if now < deadline:
+            raise gl.vm.UserError("Acceptance window still open")
+
+        self.project_expired[project_key] = True
+        self.project_expired_at[project_key] = u256(now)
+
+    @gl.public.write
+    def approve_close(
+        self,
+        project_id: int,
+    ) -> None:
+        project_key = self._project_key(project_id)
+        role = self._party_role(project_key)
+
+        if bool(self.project_closed.get(project_key, False)):
+            raise gl.vm.UserError("Project already closed")
+        if bool(self.project_cancelled.get(project_key, False)):
+            raise gl.vm.UserError("Project cancelled")
+        if bool(self.project_declined.get(project_key, False)):
+            raise gl.vm.UserError("Project declined")
+        if bool(self.project_expired.get(project_key, False)):
+            raise gl.vm.UserError("Project expired")
+        if not bool(self.project_accepted.get(project_key, False)):
+            raise gl.vm.UserError("Project is not active")
+
+        active_version = int(
+            self.project_versions.get(
+                project_key,
+                u256(0),
+            )
+        )
+
+        if role == "CLIENT":
+            if int(
+                self.project_client_close_vote_versions.get(
+                    project_key,
+                    u256(0),
+                )
+            ) == active_version:
+                raise gl.vm.UserError("Client already approved close")
+            self.project_client_close_vote_versions[project_key] = u256(
+                active_version
+            )
+        else:
+            if int(
+                self.project_contractor_close_vote_versions.get(
+                    project_key,
+                    u256(0),
+                )
+            ) == active_version:
+                raise gl.vm.UserError("Contractor already approved close")
+            self.project_contractor_close_vote_versions[project_key] = u256(
+                active_version
+            )
+
+        client_vote_version = int(
+            self.project_client_close_vote_versions.get(
+                project_key,
+                u256(0),
+            )
+        )
+        contractor_vote_version = int(
+            self.project_contractor_close_vote_versions.get(
+                project_key,
+                u256(0),
+            )
+        )
+
+        if (
+            client_vote_version == active_version
+            and contractor_vote_version == active_version
+        ):
+            now = self._chain_unix()
+            self.project_closed[project_key] = True
+            self.project_closed_at[project_key] = u256(now)
+            self.project_closed_versions[project_key] = u256(active_version)
 
     @gl.public.write
     def submit_request(
@@ -639,6 +893,13 @@ or
             )
         ):
             raise gl.vm.UserError("Project cancelled")
+
+        if bool(self.project_declined.get(project_key, False)):
+            raise gl.vm.UserError("Project declined")
+        if bool(self.project_expired.get(project_key, False)):
+            raise gl.vm.UserError("Project expired")
+        if bool(self.project_closed.get(project_key, False)):
+            raise gl.vm.UserError("Project closed")
 
         if not bool(
             self.project_accepted.get(
@@ -798,6 +1059,9 @@ or
             )
         ):
             raise gl.vm.UserError("Project cancelled")
+
+        if bool(self.project_closed.get(project_key, False)):
+            raise gl.vm.UserError("Project closed")
 
         if not bool(
             self.project_accepted.get(
@@ -988,6 +1252,9 @@ or
         ):
             raise gl.vm.UserError("Project cancelled")
 
+        if bool(self.project_closed.get(project_key, False)):
+            raise gl.vm.UserError("Project closed")
+
         if not bool(
             self.project_accepted.get(
                 project_key,
@@ -1067,8 +1334,12 @@ or
                 "project_count": int(
                     self.project_counter
                 ),
-                "contract_version": "0.4.0",
+                "contract_version": "0.5.0",
                 "scope_version_ledger": True,
+                "lifecycle_finality": True,
+                "default_acceptance_window_seconds": self.DEFAULT_ACCEPTANCE_WINDOW_SECONDS,
+                "min_acceptance_window_seconds": self.MIN_ACCEPTANCE_WINDOW_SECONDS,
+                "max_acceptance_window_seconds": self.MAX_ACCEPTANCE_WINDOW_SECONDS,
             },
             separators=(",", ":"),
         )
@@ -1099,9 +1370,66 @@ or
                 False,
             )
         )
+        declined = bool(
+            self.project_declined.get(
+                project_key,
+                False,
+            )
+        )
+        expiry_recorded = bool(
+            self.project_expired.get(
+                project_key,
+                False,
+            )
+        )
+        closed = bool(
+            self.project_closed.get(
+                project_key,
+                False,
+            )
+        )
+        deadline = int(
+            self.project_acceptance_deadlines.get(
+                project_key,
+                u256(0),
+            )
+        )
+        now = self._chain_unix()
+        deadline_elapsed = (
+            not accepted
+            and not cancelled
+            and not declined
+            and deadline > 0
+            and now >= deadline
+        )
+        expired = expiry_recorded or deadline_elapsed
+        active_version = int(
+            self.project_versions.get(
+                project_key,
+                u256(0),
+            )
+        )
+        client_close_vote_version = int(
+            self.project_client_close_vote_versions.get(
+                project_key,
+                u256(0),
+            )
+        )
+        contractor_close_vote_version = int(
+            self.project_contractor_close_vote_versions.get(
+                project_key,
+                u256(0),
+            )
+        )
         status = (
             "CANCELLED"
             if cancelled
+            else "DECLINED"
+            if declined
+            else "EXPIRED"
+            if expired
+            else "CLOSED"
+            if closed
             else "ACTIVE"
             if accepted
             else "PENDING_CONTRACTOR_ACCEPTANCE"
@@ -1122,12 +1450,7 @@ or
                         "",
                     )
                 ),
-                "active_scope_version": int(
-                    self.project_versions.get(
-                        project_key,
-                        u256(0),
-                    )
-                ),
+                "active_scope_version": active_version,
                 "active_scope": scope,
                 "scope_length": len(scope),
                 "scope_capacity_left": (
@@ -1154,6 +1477,64 @@ or
                     )
                 ),
                 "cancelled": cancelled,
+                "cancelled_at": int(
+                    self.project_cancelled_at.get(
+                        project_key,
+                        u256(0),
+                    )
+                ),
+                "acceptance_deadline": deadline,
+                "acceptance_seconds_remaining": (
+                    deadline - now
+                    if status == "PENDING_CONTRACTOR_ACCEPTANCE"
+                    and deadline > now
+                    else 0
+                ),
+                "declined": declined,
+                "declined_at": int(
+                    self.project_declined_at.get(
+                        project_key,
+                        u256(0),
+                    )
+                ),
+                "expired": expired,
+                "expiry_recorded": expiry_recorded,
+                "expired_at": (
+                    int(
+                        self.project_expired_at.get(
+                            project_key,
+                            u256(0),
+                        )
+                    )
+                    if expiry_recorded
+                    else deadline
+                    if deadline_elapsed
+                    else 0
+                ),
+                "closed": closed,
+                "closed_at": int(
+                    self.project_closed_at.get(
+                        project_key,
+                        u256(0),
+                    )
+                ),
+                "closed_scope_version": int(
+                    self.project_closed_versions.get(
+                        project_key,
+                        u256(0),
+                    )
+                ),
+                "client_close_vote_version": client_close_vote_version,
+                "contractor_close_vote_version": contractor_close_vote_version,
+                "client_close_approved": (
+                    client_close_vote_version == active_version
+                ),
+                "contractor_close_approved": (
+                    contractor_close_vote_version == active_version
+                ),
+                "terminal": (
+                    cancelled or declined or expired or closed
+                ),
                 "status": status,
                 "created_at": int(
                     self.project_created_at.get(
@@ -1572,6 +1953,7 @@ or
         )
 
         items = []
+        now = self._chain_unix()
 
         if from_index <= total:
             current = from_index
@@ -1592,6 +1974,47 @@ or
 
                 if project_id > 0:
                     project_key = u256(project_id)
+                    accepted = bool(
+                        self.project_accepted.get(project_key, False)
+                    )
+                    cancelled = bool(
+                        self.project_cancelled.get(project_key, False)
+                    )
+                    declined = bool(
+                        self.project_declined.get(project_key, False)
+                    )
+                    expiry_recorded = bool(
+                        self.project_expired.get(project_key, False)
+                    )
+                    closed = bool(
+                        self.project_closed.get(project_key, False)
+                    )
+                    deadline = int(
+                        self.project_acceptance_deadlines.get(
+                            project_key,
+                            u256(0),
+                        )
+                    )
+                    expired = expiry_recorded or (
+                        not accepted
+                        and not cancelled
+                        and not declined
+                        and deadline > 0
+                        and now >= deadline
+                    )
+                    status = (
+                        "CANCELLED"
+                        if cancelled
+                        else "DECLINED"
+                        if declined
+                        else "EXPIRED"
+                        if expired
+                        else "CLOSED"
+                        if closed
+                        else "ACTIVE"
+                        if accepted
+                        else "PENDING_CONTRACTOR_ACCEPTANCE"
+                    )
 
                     items.append(
                         {
@@ -1614,35 +2037,19 @@ or
                                     u256(0),
                                 )
                             ),
-                            "accepted": bool(
-                                self.project_accepted.get(
+                            "scope_version_count": int(
+                                self.project_scope_version_counts.get(
                                     project_key,
-                                    False,
+                                    u256(0),
                                 )
                             ),
-                            "cancelled": bool(
-                                self.project_cancelled.get(
-                                    project_key,
-                                    False,
-                                )
-                            ),
-                            "status": (
-                                "CANCELLED"
-                                if bool(
-                                    self.project_cancelled.get(
-                                        project_key,
-                                        False,
-                                    )
-                                )
-                                else "ACTIVE"
-                                if bool(
-                                    self.project_accepted.get(
-                                        project_key,
-                                        False,
-                                    )
-                                )
-                                else "PENDING_CONTRACTOR_ACCEPTANCE"
-                            ),
+                            "accepted": accepted,
+                            "cancelled": cancelled,
+                            "declined": declined,
+                            "expired": expired,
+                            "closed": closed,
+                            "acceptance_deadline": deadline,
+                            "status": status,
                             "created_at": int(
                                 self.project_created_at.get(
                                     project_key,
