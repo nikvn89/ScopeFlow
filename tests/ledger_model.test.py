@@ -37,7 +37,7 @@ scope_guard = class_node("ScopeGuard")
 methods = method_names(scope_guard)
 
 # Source/ABI-preservation checks.
-check(SOURCE.startswith("# v0.4.0"), "candidate is versioned v0.4.0")
+check(SOURCE.startswith("# v0.5.0"), "candidate is versioned v0.5.0")
 check("class ScopeGuard(gl.Contract):" in SOURCE, "implementation class remains ScopeGuard")
 check("SCOPE_IN = \"SCOPE_IN\"" in SOURCE, "SCOPE_IN enum preserved")
 check("SCOPE_EXTENSION = \"SCOPE_EXTENSION\"" in SOURCE, "SCOPE_EXTENSION enum preserved")
@@ -80,8 +80,36 @@ check("Extension rejected" in SOURCE,
 check("Scope capacity exceeded" in SOURCE,
       "capacity rollback guard preserved")
 check('"scope_version_count"' in SOURCE, "project view exposes ledger count")
-check('"contract_version": "0.4.0"' in SOURCE, "registry advertises candidate version")
+check('"contract_version": "0.5.0"' in SOURCE, "registry advertises candidate version")
 check('"scope_version_ledger": True' in SOURCE, "registry advertises ledger capability")
+
+# Milestone v2 lifecycle-finality surface checks. Behavioral coverage for
+# these methods is executed directly against ScopeGuard in the companion test.
+for required in [
+    "create_project_with_window", "decline_project", "expire_project",
+    "approve_close",
+]:
+    check(required in methods, f"lifecycle ABI method exists: {required}")
+for storage_name in [
+    "project_acceptance_deadlines", "project_cancelled_at",
+    "project_declined", "project_declined_at", "project_expired",
+    "project_expired_at", "project_closed", "project_closed_at",
+    "project_closed_versions", "project_client_close_vote_versions",
+    "project_contractor_close_vote_versions",
+]:
+    check(storage_name in SOURCE, f"lifecycle storage declared: {storage_name}")
+check("DEFAULT_ACCEPTANCE_WINDOW_SECONDS = 604800" in SOURCE,
+      "seven-day default acceptance window declared")
+check("MIN_ACCEPTANCE_WINDOW_SECONDS = 300" in SOURCE,
+      "five-minute minimum acceptance window declared")
+check("MAX_ACCEPTANCE_WINDOW_SECONDS = 2592000" in SOURCE,
+      "thirty-day maximum acceptance window declared")
+check('"contract_version": "0.5.0"' in SOURCE,
+      "registry advertises lifecycle candidate version")
+check('"lifecycle_finality": True' in SOURCE,
+      "registry advertises lifecycle capability")
+check('return "PROJECT_CLOSED"' in SOURCE,
+      "pending requests terminalize when project closes")
 
 
 @dataclass

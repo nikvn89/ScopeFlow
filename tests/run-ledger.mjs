@@ -3,7 +3,10 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const testFile = join(here, 'ledger_model.test.py')
+const testFiles = [
+  join(here, 'ledger_model.test.py'),
+  join(here, 'scopeflow_contract.test.py'),
+]
 
 const candidates = process.platform === 'win32'
   ? ['py', 'python', 'python3']
@@ -13,8 +16,12 @@ for (const command of candidates) {
   const probe = spawnSync(command, ['--version'], { encoding: 'utf8' })
   if (probe.error || probe.status !== 0) continue
 
-  const run = spawnSync(command, [testFile], { stdio: 'inherit' })
-  process.exit(run.status ?? 1)
+  for (const testFile of testFiles) {
+    const run = spawnSync(command, [testFile], { stdio: 'inherit' })
+    if (run.status !== 0) process.exit(run.status ?? 1)
+  }
+
+  process.exit(0)
 }
 
 console.error('Python 3 was not found. Install Python 3, then rerun npm run test:ledger.')
