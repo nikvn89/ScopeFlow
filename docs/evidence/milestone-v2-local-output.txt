@@ -1,0 +1,28 @@
+ScopeFlow Milestone 2 predeployment verification
+
+Command:
+npm ci
+npm run verify
+
+Observed:
+73/73 directed/source checks passed
+99/99 direct production-contract checks passed
+Property sweep: 5000 traces / 80313 transitions / 0 invariant failures
+Production TypeScript build: PASS
+Frontend transaction polling: 5/5 tests passed
+Vite modules transformed: 478
+Largest JavaScript chunk: 286.93 kB
+Previous largest JavaScript chunk: 786.94 kB
+Largest-chunk reduction: approximately 63.5%
+Lifecycle semantic evaluations in direct harness: 0
+Contract SHA256: ac4ff25ac0bd4ead34db528e97f3d822e96a39fbc88e8fbd37b66a7eb1e704bc
+
+Deployed-source parity:
+Address: 0xBe44d208A83b15973b91932f75eaA354795E907e
+Deployed normalized SHA256: ac4ff25ac0bd4ead34db528e97f3d822e96a39fbc88e8fbd37b66a7eb1e704bc
+Repository normalized SHA256: ac4ff25ac0bd4ead34db528e97f3d822e96a39fbc88e8fbd37b66a7eb1e704bc
+Result: PASS
+
+Runtime status:
+Core StudioNet lifecycle and ledger flow: PASS
+Final frontend polling patch: local PASS; live redeploy check pending

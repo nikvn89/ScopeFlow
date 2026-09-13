@@ -1,0 +1,11 @@
+Command: npm run verify:runtime-receipts
+
+successful V2 mutual-close write:
+0xc699524036af38aecb1745ab4b1842b41345031f472a41b579229b6763714970
+Resolved execution result: FINISHED_WITH_RETURN
+
+late acceptance rollback:
+0x3b86458a92b2aaab743d592454d425b653cf63472f583cbdf5d772441e61187f
+Resolved execution result: FINISHED_WITH_ERROR
+
+PASS: frontend receipt policy resolves real StudioNet success and rollback transactions.

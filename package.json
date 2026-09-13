@@ -8,7 +8,10 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test:ledger": "node tests/run-ledger.mjs",
-    "verify": "npm run test:ledger && npm run build"
+    "test:frontend": "node --experimental-strip-types --test tests/transaction_execution.test.mjs",
+    "verify:deployed": "node tests/verify-deployed-source.mjs",
+    "verify:runtime-receipts": "node --experimental-strip-types tests/verify-runtime-receipts.mjs",
+    "verify": "npm run test:ledger && npm run test:frontend && npm run build"
   },
   "dependencies": {
     "genlayer-js": "1.1.8",

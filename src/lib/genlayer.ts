@@ -2,6 +2,7 @@ import { createClient } from 'genlayer-js'
 import { studionet } from 'genlayer-js/chains'
 import { ExecutionResult, TransactionStatus } from 'genlayer-js/types'
 import { CONTRACT_ADDRESS, EXPLORER_BASE } from './config'
+import { waitForExplicitExecutionResult } from './transactionExecution'
 
 export type RegistryState = {
   project_count: number
@@ -336,7 +337,14 @@ async function submitWrite(
     }
   }
 
-  const executionName = receipt.txExecutionResultName
+  const executionName = await waitForExplicitExecutionResult(
+    receipt,
+    async () =>
+      (await readClient.request({
+        method: 'eth_getTransactionByHash',
+        params: [hash],
+      })) as Record<string, unknown>,
+  )
 
   if (executionName === ExecutionResult.FINISHED_WITH_ERROR) {
     return {
@@ -352,7 +360,7 @@ async function submitWrite(
       kind: 'submitted',
       hash,
       warning:
-        'Consensus accepted the transaction, but execution success is not yet explicit. Do not repeat it; verify the transaction and refresh state.',
+        'The transaction reached finality, but StudioNet did not expose an explicit execution result within the bounded confirmation window. Do not repeat it; verify it in Explorer or use Refresh.',
     }
   }
 

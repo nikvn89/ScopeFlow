@@ -1,87 +1,113 @@
 # ScopeFlow Testing
 
-## Milestone v1 current runtime target
+## Current candidate
 
 ```text
-Deployment: 0x6DcCC0d679515146b1e4c631A9f1215C7C31E8fe
-Contract version: 0.4.0
+Milestone: Deterministic Lifecycle Finality
+Contract version: 0.5.0
 Source: contracts/ScopeFlow.py
+Candidate SHA256: ac4ff25ac0bd4ead34db528e97f3d822e96a39fbc88e8fbd37b66a7eb1e704bc
+StudioNet deployment: 0xBe44d208A83b15973b91932f75eaA354795E907e
+Deploy transaction: 0x19e66a9d81001a2f3e452e61a22c23332c96b1c54b05fc3fc61a69f2796ceb82
+Runtime status: source parity and core lifecycle/ledger flow verified on StudioNet
+```
+
+The historical v0.4.0 deployment remains unchanged at `0x6DcCC0d679515146b1e4c631A9f1215C7C31E8fe`.
+
+## Local verification
+
+```bash
+npm ci
+npm run verify
+```
+
+`npm run verify` runs:
+
+1. source and ABI preservation checks;
+2. the seeded 5,000-trace ledger model;
+3. a direct harness that imports and calls production `ScopeGuard`;
+4. five frontend execution-result polling tests;
+5. strict TypeScript compilation;
+6. the production Vite build.
+
+Observed:
+
+```text
+73/73 directed/source checks passed
+99/99 direct production-contract checks passed
+Property sweep: 5000 traces / 80313 transitions / 0 invariant failures
+Frontend transaction polling: 5/5 tests passed
+Frontend production build: PASS
+Largest JavaScript chunk: 286.93 kB
+```
+
+## Direct production-contract coverage
+
+The tracked `tests/scopeflow_contract.test.py` suite exercises:
+
+- default and custom acceptance windows;
+- invalid-window no-write behavior;
+- acceptance at the final valid second;
+- exact-deadline acceptance/cancel/decline rejection;
+- permissionless expiry before/at/after the boundary;
+- Client-only cancellation;
+- Contractor-only decline;
+- unauthorized acceptance and close voting;
+- duplicate terminal calls and atomic rollback;
+- one-party close non-finality;
+- close votes pinned to the active scope version;
+- stale close vote invalidation after a V1-to-V2 extension;
+- exact-version mutual close;
+- pending request terminalization on close;
+- post-close submit/approve/reject/close replay blocks;
+- final ledger immutability;
+- capacity overflow rollback with no phantom version;
+- malformed semantic output fail-closed with no request/cache write;
+- zero semantic evaluations for lifecycle transitions.
+
+The separate `tests/ledger_model.test.py` property sweep remains a regression oracle; it is no longer presented as the only behavioral proof.
+
+## Deployed-source parity
+
+Run the networked parity verifier separately:
+
+```bash
+npm run verify:deployed
+npm run verify:runtime-receipts
+```
+
+The first command fetches the contract code from `0xBe44…907e`, normalizes CRLF/LF only,
+and requires both deployed and repository sources to equal SHA256
+`ac4ff25a…704bc`. The second fetches one known successful transaction and one
+known rollback and proves the frontend policy resolves them respectively as
+`FINISHED_WITH_RETURN` and `FINISHED_WITH_ERROR`.
+
+## Runtime evidence
+
+The fresh deployment passed cancel, decline, early/late deadline guards,
+permissionless expiry, acceptance, V1→V2 provenance, stale close-vote
+isolation, matching V2 mutual close, final ledger freeze, and pending-request
+terminalization. Full transaction links and screenshots are recorded in
+`MILESTONE_2_EVIDENCE.md`. Unauthorized and post-close mutation paths are
+covered by tracked direct production-contract rollback tests; the UI also
+withholds those actions.
+
+## Preserved historical evidence
+
+Accepted baseline:
+
+```text
+Version: 0.3.0
+Deployment: 0x20A5d7fcC4119aB91A6fC343cCEDCCB37E8C8dDb
+SHA256: dee6484d093e5487a59e83f29718fed593334d848bc52cdfc012cd5c922d3ee7
+```
+
+Milestone v1:
+
+```text
+Version: 0.4.0
+Deployment: 0x6DcCC0d679515146b1e4c631A9f1215C7C31E8fe
 SHA256: 4b80a8cec6309dbb6e6a082ce913899cb6d36059bc07a8380277644cb75f5e1a
 ```
 
-Milestone v1 adds the Immutable Scope Version Ledger. Fresh StudioNet runtime validation is complete. Full step-by-step evidence is in `MILESTONE_1_RUNTIME_TEST.md` and `MILESTONE_1_EVIDENCE.md`.
-
-### Runtime gates passed
-
-```text
-R1 fresh get_registry profile                         PASS
-R2 no V1 before Contractor acceptance                 PASS
-R3 acceptance creates exact immutable V1              PASS
-R4 two V1 requests classify as SCOPE_EXTENSION        PASS
-R5 first approved extension creates V2                PASS
-R6 V1 remains unchanged after V2                      PASS
-R7 stale V1 request derives SUPERSEDED                 PASS
-R8 stale approval returns ERROR/rollback, no-write    PASS
-R9 V2 extension creates V3                            PASS
-R10 ordered ledger returns exactly V1 -> V2 -> V3     PASS
-R11 unrelated wallet approval ERROR/rollback          PASS
-R12 applied-extension replay ERROR/rollback           PASS
-R13 final project remains active at V3 / count 3      PASS
-R14 local source/model suite 52/52                    PASS
-R15 property sweep 5000 traces / 80313 transitions    PASS
-```
-
-Important execution distinction observed during negative tests:
-
-```text
-Consensus status: ACCEPTED
-Execution result: ERROR
-```
-
-`ACCEPTED` therefore was not treated as execution success. Rollback reason plus unchanged post-state were checked explicitly.
-
-## Local reproduction
-
-```bash
-npm run test:ledger
-```
-
-Expected current output:
-
-```text
-52/52 directed/source checks passed
-Property sweep: 5000 traces / 80313 transitions / 0 invariant failures
-Contract SHA256: 4b80a8cec6309dbb6e6a082ce913899cb6d36059bc07a8380277644cb75f5e1a
-```
-
-Captured output:
-
-```text
-docs/evidence/milestone-v1-ledger-local-output.txt
-```
-
-## Runtime screenshots
-
-```text
-docs/evidence/m1-01-fresh-deploy-registry.png
-docs/evidence/m1-02-v1-snapshot.png
-docs/evidence/m1-03-v2-snapshot.png
-docs/evidence/m1-04-superseded-rollback.png
-docs/evidence/m1-05-v3-snapshot.png
-docs/evidence/m1-06-ordered-ledger.png
-docs/evidence/m1-07-unauthorized-rollback.png
-docs/evidence/m1-08-replay-rollback.png
-docs/evidence/m1-09-final-project-state.png
-docs/evidence/m1-10-final-ledger-state.png
-```
-
-## Accepted v0.3.0 baseline
-
-The accepted deployment remains the before-state and must not be represented as runtime proof for the new v0.4.0 ledger functionality:
-
-```text
-0x20A5d7fcC4119aB91A6fC343cCEDCCB37E8C8dDb
-SHA256 dee6484d093e5487a59e83f29718fed593334d848bc52cdfc012cd5c922d3ee7
-```
-
-Historical baseline runtime checks included Contractor opt-in, pre-acceptance cancellation, classification, two-party extension approval, supersession, and append-time capacity rollback. Milestone v1 preserves those governance invariants while adding immutable version provenance.
+Historical v1 evidence remains in `MILESTONE_1_EVIDENCE.md`, `MILESTONE_1_RUNTIME_TEST.md`, and the `docs/evidence/` directory.
