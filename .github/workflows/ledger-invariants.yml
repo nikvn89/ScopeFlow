@@ -5,13 +5,23 @@ on:
     paths:
       - 'contracts/ScopeFlow.py'
       - 'tests/ledger_model.test.py'
+      - 'tests/scopeflow_contract.test.py'
       - 'tests/run-ledger.mjs'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
       - '.github/workflows/ledger-invariants.yml'
   pull_request:
     paths:
       - 'contracts/ScopeFlow.py'
       - 'tests/ledger_model.test.py'
+      - 'tests/scopeflow_contract.test.py'
       - 'tests/run-ledger.mjs'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
 
 jobs:
   ledger-invariants:
@@ -24,4 +34,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node tests/run-ledger.mjs
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run verify
