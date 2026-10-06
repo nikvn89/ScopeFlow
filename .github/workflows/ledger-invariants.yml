@@ -4,36 +4,54 @@ on:
   push:
     paths:
       - 'contracts/ScopeFlow.py'
-      - 'tests/ledger_model.test.py'
-      - 'tests/scopeflow_contract.test.py'
-      - 'tests/run-ledger.mjs'
+      - 'tests/**'
       - 'src/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'requirements-test.txt'
       - 'vite.config.ts'
       - '.github/workflows/ledger-invariants.yml'
   pull_request:
     paths:
       - 'contracts/ScopeFlow.py'
-      - 'tests/ledger_model.test.py'
-      - 'tests/scopeflow_contract.test.py'
-      - 'tests/run-ledger.mjs'
+      - 'tests/**'
       - 'src/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'requirements-test.txt'
       - 'vite.config.ts'
 
 jobs:
   ledger-invariants:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
       - run: npm run verify
+
+  escrow-genvm:
+    name: Escrow — GenVM Direct Mode, lint, mutation matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/gltest-direct
+          key: gltest-direct-genvm-v0.2.16
+      - run: pip install -r requirements-test.txt
+      - name: GenVM Direct Mode escrow suite
+        run: python -m pytest tests/direct -q -p no:cacheprovider
+      - name: genvm-linter
+        run: python -m genvm_linter.cli lint contracts/ScopeFlow.py
+      - name: Escrow mutation matrix
+        run: python tests/mutation_check.py
