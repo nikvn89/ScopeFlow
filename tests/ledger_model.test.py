@@ -37,7 +37,7 @@ scope_guard = class_node("ScopeGuard")
 methods = method_names(scope_guard)
 
 # Source/ABI-preservation checks.
-check(SOURCE.startswith("# v0.5.0"), "candidate is versioned v0.5.0")
+check(SOURCE.startswith("# v0.6.0"), "candidate is versioned v0.6.0")
 check("class ScopeGuard(gl.Contract):" in SOURCE, "implementation class remains ScopeGuard")
 check("SCOPE_IN = \"SCOPE_IN\"" in SOURCE, "SCOPE_IN enum preserved")
 check("SCOPE_EXTENSION = \"SCOPE_EXTENSION\"" in SOURCE, "SCOPE_EXTENSION enum preserved")
@@ -80,7 +80,7 @@ check("Extension rejected" in SOURCE,
 check("Scope capacity exceeded" in SOURCE,
       "capacity rollback guard preserved")
 check('"scope_version_count"' in SOURCE, "project view exposes ledger count")
-check('"contract_version": "0.5.0"' in SOURCE, "registry advertises candidate version")
+check('CONTRACT_VERSION = "0.6.0"' in SOURCE and '"contract_version": CONTRACT_VERSION' in SOURCE, "registry advertises candidate version")
 check('"scope_version_ledger": True' in SOURCE, "registry advertises ledger capability")
 
 # Milestone v2 lifecycle-finality surface checks. Behavioral coverage for
@@ -104,7 +104,7 @@ check("MIN_ACCEPTANCE_WINDOW_SECONDS = 300" in SOURCE,
       "five-minute minimum acceptance window declared")
 check("MAX_ACCEPTANCE_WINDOW_SECONDS = 2592000" in SOURCE,
       "thirty-day maximum acceptance window declared")
-check('"contract_version": "0.5.0"' in SOURCE,
+check('CONTRACT_VERSION = "0.6.0"' in SOURCE and '"contract_version": CONTRACT_VERSION' in SOURCE,
       "registry advertises lifecycle candidate version")
 check('"lifecycle_finality": True' in SOURCE,
       "registry advertises lifecycle capability")

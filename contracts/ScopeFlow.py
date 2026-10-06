@@ -1,4 +1,4 @@
-# v0.5.0
+# v0.6.0
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 from genlayer import *
@@ -12,6 +12,35 @@ EVAL_INVALID = "EVAL_INVALID"
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 APPROVED_SEPARATOR = "\n<<<SCOPEGUARD_APPROVED_EXTENSION>>>\n"
+
+CONTRACT_VERSION = "0.6.0"
+
+# Upper bound for any single escrow amount, extension price or deposit (wei).
+MAX_ESCROW_WEI = 10**27
+
+# Markers that structure the classification prompt. Removed from untrusted
+# text in any letter case, repeatedly, until none remains.
+RESERVED_TOKENS = (
+    "<<<SCOPEGUARD_APPROVED_EXTENSION>>>",
+    "<ACTIVE_SCOPE>",
+    "</ACTIVE_SCOPE>",
+    "<CHANGE_REQUEST>",
+    "</CHANGE_REQUEST>",
+    SCOPE_IN,
+    SCOPE_EXTENSION,
+    SCOPE_UNCLEAR,
+    EVAL_INVALID,
+)
+
+
+@gl.evm.contract_interface
+class _NativeRecipient:
+    class View:
+        pass
+
+    class Write:
+        def emit_transfer(self, value: u256, /) -> None:
+            ...
 
 
 class ScopeGuard(gl.Contract):
@@ -78,6 +107,35 @@ class ScopeGuard(gl.Contract):
 
     evaluation_cache: TreeMap[str, str]
 
+    # v0.6.0 — funded escrow. All amounts are wei.
+    # escrow: client money held for the contractor (initial deposit, top-ups
+    # and the price of every applied extension). At a terminal transition the
+    # escrow is allocated once into the two "due" balances, which each party
+    # withdraws itself.
+    project_escrow_wei: TreeMap[u256, u256]
+    project_contractor_due_wei: TreeMap[u256, u256]
+    project_client_due_wei: TreeMap[u256, u256]
+    project_contractor_paid_wei: TreeMap[u256, u256]
+    project_client_refunded_wei: TreeMap[u256, u256]
+    project_settled: TreeMap[u256, bool]
+    # Settlement proposals: contractor share, the scope version and the
+    # escrow amount they were made against. Both parties must propose the
+    # same triple.
+    project_client_settlement_set: TreeMap[u256, bool]
+    project_client_settlement_share: TreeMap[u256, u256]
+    project_client_settlement_version: TreeMap[u256, u256]
+    project_client_settlement_escrow: TreeMap[u256, u256]
+    project_contractor_settlement_set: TreeMap[u256, bool]
+    project_contractor_settlement_share: TreeMap[u256, u256]
+    project_contractor_settlement_version: TreeMap[u256, u256]
+    project_contractor_settlement_escrow: TreeMap[u256, u256]
+
+    # Extension pricing: the price is attached at submission and only kept
+    # for SCOPE_EXTENSION; the client deposits it when approving.
+    request_price_wei: TreeMap[str, u256]
+    request_deposit_wei: TreeMap[str, u256]
+    request_deposit_returned: TreeMap[str, bool]
+
     def __init__(self):
         self.project_counter = u256(0)
 
@@ -136,21 +194,24 @@ class ScopeGuard(gl.Contract):
         raise gl.vm.UserError("Only project parties")
 
     def _replace_reserved_tokens(self, text: str) -> str:
-        cleaned = text.replace(APPROVED_SEPARATOR.strip(), " ")
-
-        for token in (
-            "<ACTIVE_SCOPE>",
-            "</ACTIVE_SCOPE>",
-            "<CHANGE_REQUEST>",
-            "</CHANGE_REQUEST>",
-            SCOPE_IN,
-            SCOPE_EXTENSION,
-            SCOPE_UNCLEAR,
-            EVAL_INVALID,
-        ):
-            cleaned = cleaned.replace(token, " ")
-
-        return cleaned
+        # v0.6.0: every reserved marker is removed in any letter case, and
+        # removal repeats until a full pass changes nothing. Each removal
+        # leaves a space, so the pieces around a marker cannot join into a
+        # new marker.
+        cleaned = text
+        while True:
+            before = cleaned
+            for token in RESERVED_TOKENS:
+                index = cleaned.upper().find(token)
+                while index >= 0:
+                    cleaned = (
+                        cleaned[:index]
+                        + " "
+                        + cleaned[index + len(token):]
+                    )
+                    index = cleaned.upper().find(token)
+            if cleaned == before:
+                return cleaned
 
     def _clean_scope(self, text: str) -> str:
         cleaned = self._replace_reserved_tokens(text).strip()
@@ -431,6 +492,57 @@ or
         return result
 
     # ----------------------------------------------------------------
+    # Escrow helpers (v0.6.0)
+    # ----------------------------------------------------------------
+
+    def _wei_in_range(self, amount: int, message: str) -> None:
+        if amount < 0 or amount > MAX_ESCROW_WEI:
+            raise gl.vm.UserError(message)
+
+    def _add_escrow(self, project_key: u256, amount: u256) -> None:
+        current = self.project_escrow_wei.get(project_key, u256(0))
+        updated = current + amount
+        if int(updated) > MAX_ESCROW_WEI:
+            raise gl.vm.UserError("Escrow is out of range")
+        self.project_escrow_wei[project_key] = updated
+
+    def _refund_escrow_to_client(self, project_key: u256) -> None:
+        escrow = self.project_escrow_wei.get(project_key, u256(0))
+        due = self.project_client_due_wei.get(project_key, u256(0))
+        self.project_client_due_wei[project_key] = due + escrow
+        self.project_escrow_wei[project_key] = u256(0)
+
+    def _release_escrow(self, project_key: u256, contractor_share: u256) -> None:
+        escrow = self.project_escrow_wei.get(project_key, u256(0))
+        if contractor_share > escrow:
+            raise gl.vm.UserError("Settlement exceeds the escrow")
+        contractor_due = self.project_contractor_due_wei.get(project_key, u256(0))
+        client_due = self.project_client_due_wei.get(project_key, u256(0))
+        self.project_contractor_due_wei[project_key] = contractor_due + contractor_share
+        self.project_client_due_wei[project_key] = client_due + (escrow - contractor_share)
+        self.project_escrow_wei[project_key] = u256(0)
+        self.project_settled[project_key] = True
+
+    def _settlement_json(self, project_key: u256, role: str):
+        if role == "CLIENT":
+            if not bool(self.project_client_settlement_set.get(project_key, False)):
+                return None
+            share = self.project_client_settlement_share.get(project_key, u256(0))
+            version = self.project_client_settlement_version.get(project_key, u256(0))
+            escrow = self.project_client_settlement_escrow.get(project_key, u256(0))
+        else:
+            if not bool(self.project_contractor_settlement_set.get(project_key, False)):
+                return None
+            share = self.project_contractor_settlement_share.get(project_key, u256(0))
+            version = self.project_contractor_settlement_version.get(project_key, u256(0))
+            escrow = self.project_contractor_settlement_escrow.get(project_key, u256(0))
+        return {
+            "contractor_share_wei": str(int(share)),
+            "scope_version": int(version),
+            "escrow_wei": str(int(escrow)),
+        }
+
+    # ----------------------------------------------------------------
     # Derived request status
     # ----------------------------------------------------------------
 
@@ -571,6 +683,8 @@ or
         self.project_client_close_vote_versions[project_key] = u256(0)
         self.project_contractor_close_vote_versions[project_key] = u256(0)
         self.project_scope_version_counts[project_key] = u256(0)
+        self.project_escrow_wei[project_key] = u256(0)
+        self._add_escrow(project_key, gl.message.value)
 
         client_key = str(client_address).lower()
 
@@ -592,7 +706,7 @@ or
             client_key + ":" + str(client_count)
         ] = project_key
 
-    @gl.public.write
+    @gl.public.write.payable
     def create_project(
         self,
         contractor: str,
@@ -604,7 +718,7 @@ or
             self.DEFAULT_ACCEPTANCE_WINDOW_SECONDS,
         )
 
-    @gl.public.write
+    @gl.public.write.payable
     def create_project_with_window(
         self,
         contractor: str,
@@ -743,6 +857,7 @@ or
 
         self.project_cancelled[project_key] = True
         self.project_cancelled_at[project_key] = u256(now)
+        self._refund_escrow_to_client(project_key)
 
     @gl.public.write
     def decline_project(
@@ -775,6 +890,7 @@ or
 
         self.project_declined[project_key] = True
         self.project_declined_at[project_key] = u256(now)
+        self._refund_escrow_to_client(project_key)
 
     @gl.public.write
     def expire_project(
@@ -804,6 +920,7 @@ or
 
         self.project_expired[project_key] = True
         self.project_expired_at[project_key] = u256(now)
+        self._refund_escrow_to_client(project_key)
 
     @gl.public.write
     def approve_close(
@@ -875,6 +992,11 @@ or
             self.project_closed[project_key] = True
             self.project_closed_at[project_key] = u256(now)
             self.project_closed_versions[project_key] = u256(active_version)
+            # v0.6.0: a mutual close pays the contractor the whole escrow.
+            self._release_escrow(
+                project_key,
+                self.project_escrow_wei.get(project_key, u256(0)),
+            )
 
     @gl.public.write
     def submit_request(
@@ -882,6 +1004,25 @@ or
         project_id: int,
         text: str,
     ) -> None:
+        self._submit_request(project_id, text, 0)
+
+    @gl.public.write
+    def submit_priced_request(
+        self,
+        project_id: int,
+        text: str,
+        price_wei: int,
+    ) -> None:
+        self._submit_request(project_id, text, price_wei)
+
+    def _submit_request(
+        self,
+        project_id: int,
+        text: str,
+        price_wei: int,
+    ) -> None:
+        self._wei_in_range(price_wei, "Price is out of range")
+
         project_key = self._project_key(project_id)
 
         self._party_role(project_key)
@@ -1039,11 +1180,19 @@ or
             request_key
         ] = u256(now)
 
+        # v0.6.0: only an extension carries a price. In-scope work is already
+        # covered by the escrow, so a price attached to it is discarded.
+        self.request_price_wei[request_key] = u256(
+            price_wei if classification == SCOPE_EXTENSION else 0
+        )
+        self.request_deposit_wei[request_key] = u256(0)
+        self.request_deposit_returned[request_key] = False
+
         self.last_submission_at[
             cooldown_key
         ] = u256(now)
 
-    @gl.public.write
+    @gl.public.write.payable
     def approve_extension(
         self,
         project_id: int,
@@ -1129,6 +1278,8 @@ or
                 "Request superseded by scope change"
             )
 
+        price = self.request_price_wei.get(request_key, u256(0))
+
         if role == "CLIENT":
             if bool(
                 self.request_client_approved.get(
@@ -1140,9 +1291,16 @@ or
                     "Client already approved"
                 )
 
+            # v0.6.0: the client's approval deposits the extension price.
+            if gl.message.value != price:
+                raise gl.vm.UserError(
+                    "Client approval must deposit exactly the extension price"
+                )
+
             self.request_client_approved[
                 request_key
             ] = True
+            self.request_deposit_wei[request_key] = price
         else:
             if bool(
                 self.request_contractor_approved.get(
@@ -1152,6 +1310,11 @@ or
             ):
                 raise gl.vm.UserError(
                     "Contractor already approved"
+                )
+
+            if gl.message.value != u256(0):
+                raise gl.vm.UserError(
+                    "Only the client deposits for an extension"
                 )
 
             self.request_contractor_approved[
@@ -1212,6 +1375,11 @@ or
             self.request_applied[
                 request_key
             ] = True
+
+            # v0.6.0: the deposited price joins the escrow.
+            deposit = self.request_deposit_wei.get(request_key, u256(0))
+            self.request_deposit_wei[request_key] = u256(0)
+            self._add_escrow(project_key, deposit)
 
             # Record the complete effective scope snapshot exactly once when
             # both approvals succeed. The snapshot is append-only and links
@@ -1324,6 +1492,159 @@ or
         ] = True
 
     # ----------------------------------------------------------------
+    # Escrow writes (v0.6.0)
+    # ----------------------------------------------------------------
+
+    @gl.public.write.payable
+    def fund_project(
+        self,
+        project_id: int,
+    ) -> None:
+        project_key = self._project_key(project_id)
+
+        if self._party_role(project_key) != "CLIENT":
+            raise gl.vm.UserError("Only the client may fund")
+        if gl.message.value == u256(0):
+            raise gl.vm.UserError("Funding amount must be greater than zero")
+        if bool(self.project_cancelled.get(project_key, False)):
+            raise gl.vm.UserError("Project cancelled")
+        if bool(self.project_declined.get(project_key, False)):
+            raise gl.vm.UserError("Project declined")
+        if bool(self.project_expired.get(project_key, False)):
+            raise gl.vm.UserError("Project expired")
+        if bool(self.project_closed.get(project_key, False)):
+            raise gl.vm.UserError("Project closed")
+
+        if not bool(self.project_accepted.get(project_key, False)):
+            deadline = int(
+                self.project_acceptance_deadlines.get(project_key, u256(0))
+            )
+            if self._chain_unix() >= deadline:
+                raise gl.vm.UserError("Acceptance window expired")
+
+        self._add_escrow(project_key, gl.message.value)
+
+    @gl.public.write
+    def propose_settlement(
+        self,
+        project_id: int,
+        contractor_share_wei: int,
+    ) -> None:
+        project_key = self._project_key(project_id)
+        role = self._party_role(project_key)
+
+        if bool(self.project_closed.get(project_key, False)):
+            raise gl.vm.UserError("Project already closed")
+        if not bool(self.project_accepted.get(project_key, False)):
+            raise gl.vm.UserError("Project is not active")
+
+        self._wei_in_range(contractor_share_wei, "Settlement share is out of range")
+        share = u256(contractor_share_wei)
+        escrow = self.project_escrow_wei.get(project_key, u256(0))
+        if share > escrow:
+            raise gl.vm.UserError("Settlement exceeds the escrow")
+
+        version = self.project_versions.get(project_key, u256(0))
+
+        if role == "CLIENT":
+            if (
+                bool(self.project_client_settlement_set.get(project_key, False))
+                and self.project_client_settlement_share.get(project_key, u256(0)) == share
+                and self.project_client_settlement_version.get(project_key, u256(0)) == version
+                and self.project_client_settlement_escrow.get(project_key, u256(0)) == escrow
+            ):
+                raise gl.vm.UserError("Settlement already proposed")
+            self.project_client_settlement_set[project_key] = True
+            self.project_client_settlement_share[project_key] = share
+            self.project_client_settlement_version[project_key] = version
+            self.project_client_settlement_escrow[project_key] = escrow
+        else:
+            if (
+                bool(self.project_contractor_settlement_set.get(project_key, False))
+                and self.project_contractor_settlement_share.get(project_key, u256(0)) == share
+                and self.project_contractor_settlement_version.get(project_key, u256(0)) == version
+                and self.project_contractor_settlement_escrow.get(project_key, u256(0)) == escrow
+            ):
+                raise gl.vm.UserError("Settlement already proposed")
+            self.project_contractor_settlement_set[project_key] = True
+            self.project_contractor_settlement_share[project_key] = share
+            self.project_contractor_settlement_version[project_key] = version
+            self.project_contractor_settlement_escrow[project_key] = escrow
+
+        agreed = (
+            bool(self.project_client_settlement_set.get(project_key, False))
+            and bool(self.project_contractor_settlement_set.get(project_key, False))
+            and self.project_client_settlement_share.get(project_key, u256(0))
+            == self.project_contractor_settlement_share.get(project_key, u256(0))
+            and self.project_client_settlement_version.get(project_key, u256(0)) == version
+            and self.project_contractor_settlement_version.get(project_key, u256(0)) == version
+            and self.project_client_settlement_escrow.get(project_key, u256(0)) == escrow
+            and self.project_contractor_settlement_escrow.get(project_key, u256(0)) == escrow
+        )
+
+        if agreed:
+            now = self._chain_unix()
+            self.project_closed[project_key] = True
+            self.project_closed_at[project_key] = u256(now)
+            self.project_closed_versions[project_key] = version
+            self._release_escrow(project_key, share)
+
+    @gl.public.write
+    def withdraw(
+        self,
+        project_id: int,
+    ) -> None:
+        project_key = self._project_key(project_id)
+        role = self._party_role(project_key)
+
+        if role == "CLIENT":
+            amount = self.project_client_due_wei.get(project_key, u256(0))
+            if amount == u256(0):
+                raise gl.vm.UserError("Nothing to withdraw")
+            recipient = self.project_clients.get(project_key, "")
+            # Effects before the transfer.
+            self.project_client_due_wei[project_key] = u256(0)
+            refunded = self.project_client_refunded_wei.get(project_key, u256(0))
+            self.project_client_refunded_wei[project_key] = refunded + amount
+        else:
+            amount = self.project_contractor_due_wei.get(project_key, u256(0))
+            if amount == u256(0):
+                raise gl.vm.UserError("Nothing to withdraw")
+            recipient = self.project_contractors.get(project_key, "")
+            self.project_contractor_due_wei[project_key] = u256(0)
+            paid = self.project_contractor_paid_wei.get(project_key, u256(0))
+            self.project_contractor_paid_wei[project_key] = paid + amount
+
+        _NativeRecipient(Address(recipient)).emit_transfer(value=amount)
+
+    @gl.public.write
+    def reclaim_extension_deposit(
+        self,
+        project_id: int,
+        request_id: int,
+    ) -> None:
+        project_key = self._project_key(project_id)
+
+        if self._party_role(project_key) != "CLIENT":
+            raise gl.vm.UserError("Only the client may reclaim a deposit")
+
+        request_key = self._request_key(project_key, request_id)
+        deposit = self.request_deposit_wei.get(request_key, u256(0))
+        if deposit == u256(0):
+            raise gl.vm.UserError("No deposit to reclaim")
+
+        status = self._derived_status(project_key, request_key)
+        if status == "AWAITING_APPROVAL":
+            raise gl.vm.UserError("Deposit is committed to a live extension")
+
+        # Effects before the transfer.
+        self.request_deposit_wei[request_key] = u256(0)
+        self.request_deposit_returned[request_key] = True
+        _NativeRecipient(
+            Address(self.project_clients.get(project_key, ""))
+        ).emit_transfer(value=deposit)
+
+    # ----------------------------------------------------------------
     # Views
     # ----------------------------------------------------------------
 
@@ -1334,9 +1655,11 @@ or
                 "project_count": int(
                     self.project_counter
                 ),
-                "contract_version": "0.5.0",
+                "contract_version": CONTRACT_VERSION,
                 "scope_version_ledger": True,
                 "lifecycle_finality": True,
+                "funded_escrow": True,
+                "max_escrow_wei": str(MAX_ESCROW_WEI),
                 "default_acceptance_window_seconds": self.DEFAULT_ACCEPTANCE_WINDOW_SECONDS,
                 "min_acceptance_window_seconds": self.MIN_ACCEPTANCE_WINDOW_SECONDS,
                 "max_acceptance_window_seconds": self.MAX_ACCEPTANCE_WINDOW_SECONDS,
@@ -1541,6 +1864,33 @@ or
                         project_key,
                         u256(0),
                     )
+                ),
+                "escrow_wei": str(int(
+                    self.project_escrow_wei.get(project_key, u256(0))
+                )),
+                "contractor_due_wei": str(int(
+                    self.project_contractor_due_wei.get(project_key, u256(0))
+                )),
+                "client_due_wei": str(int(
+                    self.project_client_due_wei.get(project_key, u256(0))
+                )),
+                "contractor_paid_wei": str(int(
+                    self.project_contractor_paid_wei.get(project_key, u256(0))
+                )),
+                "client_refunded_wei": str(int(
+                    self.project_client_refunded_wei.get(project_key, u256(0))
+                )),
+                "settled": bool(
+                    self.project_settled.get(project_key, False)
+                ),
+                "refund_pending_expiry": (
+                    deadline_elapsed and not expiry_recorded
+                ),
+                "client_settlement": self._settlement_json(
+                    project_key, "CLIENT"
+                ),
+                "contractor_settlement": self._settlement_json(
+                    project_key, "CONTRACTOR"
                 ),
             },
             separators=(",", ":"),
@@ -1821,6 +2171,15 @@ or
                     project_key,
                     request_key,
                 ),
+                "price_wei": str(int(
+                    self.request_price_wei.get(request_key, u256(0))
+                )),
+                "deposit_wei": str(int(
+                    self.request_deposit_wei.get(request_key, u256(0))
+                )),
+                "deposit_returned": bool(
+                    self.request_deposit_returned.get(request_key, False)
+                ),
             },
             separators=(",", ":"),
         )
@@ -1910,6 +2269,12 @@ or
                             project_key,
                             request_key,
                         ),
+                        "price_wei": str(int(
+                            self.request_price_wei.get(request_key, u256(0))
+                        )),
+                        "deposit_wei": str(int(
+                            self.request_deposit_wei.get(request_key, u256(0))
+                        )),
                     }
                 )
 
@@ -2049,6 +2414,9 @@ or
                             "expired": expired,
                             "closed": closed,
                             "acceptance_deadline": deadline,
+                            "escrow_wei": str(int(
+                                self.project_escrow_wei.get(project_key, u256(0))
+                            )),
                             "status": status,
                             "created_at": int(
                                 self.project_created_at.get(

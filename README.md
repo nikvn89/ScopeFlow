@@ -1,10 +1,20 @@
 # ScopeFlow
 
-**Consensus-governed project scope with immutable scope history and deterministic lifecycle finality.**
+**Consensus-governed project scope, with the money held in escrow.**
 
-ScopeFlow lets a Client commit an initial scope, requires explicit Contractor opt-in, classifies change requests with bounded GenLayer consensus, and requires both parties to approve material extensions. Milestone v1 added the immutable effective-scope ledger. Milestone v2 adds deterministic deadlines and terminal lifecycle paths without expanding the semantic question.
+ScopeFlow lets a Client commit an initial scope, requires explicit Contractor opt-in, classifies change requests with bounded GenLayer consensus, and requires both parties to approve material extensions. Milestone v1 added the immutable effective-scope ledger. Milestone v2 added deterministic deadlines and terminal lifecycle paths. Milestone v3 puts the budget in the contract: the Client's deposit is escrowed, a scope extension carries a price the Client deposits when approving, and the escrow is released, refunded or split by the lifecycle.
 
 ## Deployments and source parity
+
+### Milestone v3 — funded scope escrow
+
+```text
+Contract version: 0.6.0
+Source: contracts/ScopeFlow.py
+Source SHA256: 161a7900286927010281b976ff617f222e3a17ae5440462b294982bd10202777
+Deployment: ⟨v0.6.0 address⟩
+Deploy Tx: ⟨v0.6.0 deploy tx⟩
+```
 
 ### Accepted baseline — unchanged
 
@@ -26,7 +36,7 @@ Source SHA256: 4b80a8cec6309dbb6e6a082ce913899cb6d36059bc07a8380277644cb75f5e1a
 
 ```text
 Contract version: 0.5.0
-Source: contracts/ScopeFlow.py
+Source: contracts/ScopeFlow.py at the Milestone v2 commit
 Candidate SHA256: ac4ff25ac0bd4ead34db528e97f3d822e96a39fbc88e8fbd37b66a7eb1e704bc
 Deployment: 0xBe44d208A83b15973b91932f75eaA354795E907e
 Deploy Tx: 0x19e66a9d81001a2f3e452e61a22c23332c96b1c54b05fc3fc61a69f2796ceb82
@@ -34,7 +44,33 @@ Runtime status: source parity and core lifecycle/ledger path verified on StudioN
 ```
 
 `npm run verify:deployed` independently fetches the deployed code and proves
-that its normalized SHA256 matches the frozen repository source.
+that its normalized SHA256 matches the repository source.
+
+## Milestone v3 — Funded Scope Escrow
+
+Until v0.5.0 ScopeFlow recorded who agreed to what, but the budget lived outside the contract. v0.6.0 holds it:
+
+- the Client deposits the budget when creating the project (`create_project*` are payable) and can add more with `fund_project`;
+- a change request can carry a price (`submit_priced_request`). **The GenLayer classification decides whether anyone pays:** the price is kept only for `SCOPE_EXTENSION`; in-scope work is already covered by the escrow, so its price is dropped;
+- the Client's approval of a priced extension must deposit exactly the price; when both parties approve, the deposit joins the escrow with the new scope version;
+- a deposit whose extension can no longer apply (rejected, superseded, project closed) goes back to the Client with `reclaim_extension_deposit`;
+- mutual close → the whole escrow to the Contractor; cancel / decline / expiry → back to the Client; `withdraw` pays each party its own allocation once;
+- if the work ends early, `propose_settlement` lets both parties agree the Contractor's share; matching proposals (same share, same scope version, same escrow) close the project and split the escrow.
+
+Money paths never call the model. The app shows the escrow and each party's due balance, a fund box for the Client, an early-settlement box with **Accept** for the other party's proposal, the price on every extension, **Approve & deposit** for the Client, and **Reclaim deposit** where it applies.
+
+New write methods:
+
+```text
+fund_project(project_id)                                  payable, Client
+submit_priced_request(project_id, text, price_wei)
+approve_extension(project_id, request_id)                 now payable; Client deposits the price
+reclaim_extension_deposit(project_id, request_id)         Client
+propose_settlement(project_id, contractor_share_wei)
+withdraw(project_id)
+```
+
+See [SECURITY.md](./SECURITY.md) for the escrow rules and limits.
 
 ## Milestone v2 — Deterministic Lifecycle Finality
 
@@ -107,6 +143,9 @@ Invalid, uncertain, or malformed evaluation output raises before consequential r
 ```bash
 npm ci
 npm run verify
+pip install -r requirements-test.txt
+python -m pytest tests/direct -q -p no:cacheprovider
+python tests/mutation_check.py
 npm run verify:deployed
 ```
 
@@ -116,10 +155,11 @@ Current local result:
 73/73 directed/source checks passed
 99/99 direct production-contract checks passed
 Property sweep: 5000 traces / 80313 transitions / 0 invariant failures
-Frontend execution polling: 5/5 tests passed
+GenVM Direct Mode escrow suite: 38/38 passed
+Escrow mutation matrix: 40/40 mutants killed
+Frontend tests: 14/14 passed
 Frontend production build: PASS
-Largest JavaScript chunk: 286.93 kB
-Candidate SHA256: ac4ff25ac0bd4ead34db528e97f3d822e96a39fbc88e8fbd37b66a7eb1e704bc
+Source SHA256: 161a7900286927010281b976ff617f222e3a17ae5440462b294982bd10202777
 ```
 
 The direct harness imports and calls the production `ScopeGuard` implementation. The separate seeded model remains as a high-volume ledger property sweep.
@@ -131,6 +171,8 @@ against one real successful StudioNet transaction and one real rollback.
 
 The dApp:
 
+- switches or adds StudioNet with standard wallet RPC (no GenLayer Snap);
+- shows the contract's own revert sentence when a write rolls back;
 - waits for `FINALIZED`;
 - polls finalized transactions whose execution result is briefly absent;
 - distinguishes `FINISHED_WITH_RETURN` from `FINISHED_WITH_ERROR`;
@@ -139,10 +181,10 @@ The dApp:
 - loads the full paginated scope ledger;
 - exposes acceptance deadline, decline, expiry recording, close votes, and final closed version.
 
-Current environment targets the fresh runtime-validated v0.5.0 deployment:
+Production targets the v0.6.0 deployment:
 
 ```text
-VITE_CONTRACT_ADDRESS=0xBe44d208A83b15973b91932f75eaA354795E907e
+VITE_CONTRACT_ADDRESS=⟨v0.6.0 address⟩
 ```
 
 ## Evidence
@@ -151,4 +193,5 @@ VITE_CONTRACT_ADDRESS=0xBe44d208A83b15973b91932f75eaA354795E907e
 - `MILESTONE_1_RUNTIME_TEST.md` — executed v0.4.0 path.
 - `MILESTONE_2_EVIDENCE.md` — before/after measurements and candidate status.
 - `MILESTONE_2_RUNTIME_TEST.md` — exact fresh-deployment runtime path.
-- `TESTING.md` — local verifier and runtime gates.
+- `TESTING.md` — local verifier, Milestone v3 runtime matrix and gates.
+- `SECURITY.md` — escrow rules, invariants and limits.

@@ -4,9 +4,15 @@ import { readFile } from 'node:fs/promises'
 import { createClient } from 'genlayer-js'
 import { studionet } from 'genlayer-js/chains'
 
-const address = '0xBe44d208A83b15973b91932f75eaA354795E907e'
+// v0.6.0 deployment. Pass another address as the first argument to check it instead.
+const DEPLOYED_V060 = ''
+const address = process.argv[2] ?? DEPLOYED_V060
 const expectedSha =
-  'ac4ff25ac0bd4ead34db528e97f3d822e96a39fbc88e8fbd37b66a7eb1e704bc'
+  '161a7900286927010281b976ff617f222e3a17ae5440462b294982bd10202777'
+
+if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+  throw new Error('Set the v0.6.0 deployment address (DEPLOYED_V060) or pass it as an argument.')
+}
 
 function normalizeSource(source) {
   return source.replaceAll('\r\n', '\n')
@@ -32,7 +38,7 @@ console.log(`Deployed normalized SHA256: ${deployedSha}`)
 console.log(`Repository normalized SHA256: ${localSha}`)
 
 if (deployedSha !== expectedSha || localSha !== expectedSha) {
-  throw new Error('Source hash does not match the frozen v0.5.0 candidate.')
+  throw new Error('Source hash does not match the v0.6.0 source.')
 }
 
 if (normalizedDeployed !== normalizedLocal) {

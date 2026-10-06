@@ -45,12 +45,33 @@ class UserError(Exception):
     pass
 
 
-class Public:
-    def write(self, fn):
+class _Write:
+    def __call__(self, fn):
         return fn
+
+    def payable(self, fn):
+        return fn
+
+
+class Public:
+    write = _Write()
 
     def view(self, fn):
         return fn
+
+
+def contract_interface(cls):
+    class _Bound:
+        def __init__(self, address):
+            self.address = address
+
+        def emit_transfer(self, value):
+            TRANSFERS.append((str(self.address).lower(), int(value)))
+
+    return _Bound
+
+
+TRANSFERS = []
 
 
 class Nondet:
@@ -76,9 +97,10 @@ class VM:
         return leader
 
 
-message = types.SimpleNamespace(sender_address=Address("0x" + "11" * 20))
+message = types.SimpleNamespace(sender_address=Address("0x" + "11" * 20), value=U256(0))
 gl = types.SimpleNamespace(
     Contract=Contract,
+    evm=types.SimpleNamespace(contract_interface=contract_interface),
     public=Public(),
     vm=VM,
     nondet=Nondet,
@@ -179,7 +201,7 @@ contract = fresh_contract()
 
 # Config and preserved default create path.
 registry = json.loads(contract.get_registry())
-check(registry["contract_version"] == "0.5.0", "registry exposes candidate version")
+check(registry["contract_version"] == "0.6.0", "registry exposes candidate version")
 check(registry["lifecycle_finality"] is True, "registry advertises lifecycle finality")
 check(registry["default_acceptance_window_seconds"] == 604800, "default window is seven days")
 check(registry["min_acceptance_window_seconds"] == 300, "minimum window is five minutes")

@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.6.0 — Milestone v3: Funded Scope Escrow
+
+### Added
+
+- **Escrow.** `create_project` and `create_project_with_window` are now payable: the Client's deposit is held by the contract. `fund_project` (payable, Client only) adds to it while the project is pending or active.
+- **The classification decides who pays.** `submit_priced_request(project_id, text, price_wei)` attaches a price to a change request. The contract keeps the price only when GenLayer classifies the request as `SCOPE_EXTENSION`; for `SCOPE_IN` and `SCOPE_UNCLEAR` it is dropped, because in-scope work is already paid by the escrow.
+- **Paid approval.** `approve_extension` is payable: the Client's approval must deposit exactly the extension price; the Contractor's must carry no value. When both approve, the deposit joins the escrow together with the new scope version.
+- **Deposit return.** `reclaim_extension_deposit` returns a Client deposit once its extension can no longer apply (rejected, superseded or project closed).
+- **Release and refund.** A mutual close allocates the whole escrow to the Contractor. Cancel, decline and expiry allocate it back to the Client. `withdraw(project_id)` pays each party its own allocation, once.
+- **Agreed split.** `propose_settlement(project_id, contractor_share_wei)`: when both parties propose the same share against the same scope version and the same escrow, the project closes and the escrow is split.
+- Views: escrow, dues, paid and refunded amounts, settlement proposals and `refund_pending_expiry` in `get_project`; `price_wei`, `deposit_wei` and `deposit_returned` in request views; `funded_escrow` in `get_registry`. Every amount is a decimal string.
+
+### Corrected
+
+- The prompt fence removed reserved markers in exact case only (`</change_request>` passed through). Markers are now removed in any case, repeatedly, until none remains.
+- Wallet writes no longer call `connect('studionet')` (GenLayer Snap); the app switches or adds the network with standard wallet RPC.
+- A rolled-back write now shows the contract's own revert sentence instead of a generic failure.
+
+### Preserved
+
+- Every v0.5.0 method keeps its signature; calls without value behave exactly as before (99/99 production-contract checks and the 5,000-trace ledger sweep still pass).
+- Lifecycle and money transitions perform zero semantic evaluations.
+
+### Tests
+
+- `tests/direct/test_escrow_direct.py`: 38 GenVM Direct Mode tests on the real py-genlayer v0.2.16 SDK, with every payout checked by recipient and amount, plus a conservation test.
+- `tests/mutation_check.py`: 40 escrow and fence mutants, all killed.
+- Frontend: 14 Node tests (escrow amounts and actions, revert sentences synced with the contract, execution polling).
+
+### Deployment status
+
+```text
+Milestone v3 v0.6.0: ⟨v0.6.0 address⟩
+Source SHA256:       161a7900286927010281b976ff617f222e3a17ae5440462b294982bd10202777
+```
+
 ## 0.5.0 — Milestone v2 candidate: Deterministic Lifecycle Finality
 
 ### Added

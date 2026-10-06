@@ -3,16 +3,44 @@
 ## Current candidate
 
 ```text
-Milestone: Deterministic Lifecycle Finality
-Contract version: 0.5.0
+Milestone: v3 — Funded Scope Escrow
+Contract version: 0.6.0
 Source: contracts/ScopeFlow.py
-Candidate SHA256: ac4ff25ac0bd4ead34db528e97f3d822e96a39fbc88e8fbd37b66a7eb1e704bc
-StudioNet deployment: 0xBe44d208A83b15973b91932f75eaA354795E907e
-Deploy transaction: 0x19e66a9d81001a2f3e452e61a22c23332c96b1c54b05fc3fc61a69f2796ceb82
-Runtime status: source parity and core lifecycle/ledger flow verified on StudioNet
+Source SHA256: 161a7900286927010281b976ff617f222e3a17ae5440462b294982bd10202777
+StudioNet deployment: ⟨v0.6.0 address⟩
+Deploy transaction: ⟨v0.6.0 deploy tx⟩
 ```
 
-The historical v0.4.0 deployment remains unchanged at `0x6DcCC0d679515146b1e4c631A9f1215C7C31E8fe`.
+The v0.5.0 deployment remains unchanged at `0xBe44d208A83b15973b91932f75eaA354795E907e`.
+
+## Milestone v3 runtime matrix
+
+Two wallets: **A** = Client, **B** = Contractor. Amounts are small on purpose.
+
+Scope for project 1:
+
+```text
+Build a responsive marketing website with home, pricing and contact pages, deployed to the client's domain.
+```
+
+| # | Wallet | Action | Expected | Result / tx |
+| --- | --- | --- | --- | --- |
+| 1 | A | Deploy `contracts/ScopeFlow.py` | Finalized, success | ⟨tx⟩ |
+| 2 | A | Create project: Contractor B, the scope above, window 600 s, escrow **2 GEN** | Pending; escrow 2 GEN | ⟨tx⟩ |
+| 3 | B | Accept project | Active; scope V1 | ⟨tx⟩ |
+| 4 | B | Submit request with price **1 GEN**: `Add a newsletter signup form connected to the client's mailing tool, with double opt-in.` | `SCOPE_EXTENSION`; price 1 GEN | ⟨tx⟩ |
+| 5 | A | Submit request with price **1 GEN**: `Make the pricing page responsive on mobile phones.` | `SCOPE_IN`; price shown as none (dropped by the contract) | ⟨tx⟩ |
+| 6 | B | Approve request from row 4 | Contractor approved | ⟨tx⟩ |
+| 7 | A | **Approve & deposit 1 GEN** on the same request | Applied; scope V2; escrow 3 GEN | ⟨tx⟩ |
+| 8 | B | Propose split: Contractor share **2 GEN** | B's proposal shown | ⟨tx⟩ |
+| 9 | A | **Accept** B's split | Closed; Contractor due 2 GEN, Client refund due 1 GEN | ⟨tx⟩ |
+| 10 | B | **Withdraw 2 GEN** | Paid to Contractor 2 GEN | ⟨tx⟩ |
+| 11 | A | **Withdraw 1 GEN** | Refunded to Client 1 GEN | ⟨tx⟩ |
+| 12 | A | Create project 2: Contractor B, same scope, window 600 s, escrow **0.5 GEN** | Pending; escrow 0.5 GEN | ⟨tx⟩ |
+| 13 | B | Decline project 2 | Declined; Client refund due 0.5 GEN | ⟨tx⟩ |
+| 14 | A | **Withdraw 0.5 GEN** on project 2 | Refunded to Client 0.5 GEN | ⟨tx⟩ |
+
+Rows 4–5 show that the classification decides who pays; rows 6–7 show a paid extension joining the escrow; rows 8–11 the agreed split; rows 12–14 the refund path.
 
 ## Local verification
 
@@ -26,20 +54,31 @@ npm run verify
 1. source and ABI preservation checks;
 2. the seeded 5,000-trace ledger model;
 3. a direct harness that imports and calls production `ScopeGuard`;
-4. five frontend execution-result polling tests;
+4. frontend tests: execution-result polling, escrow amounts and actions, revert sentences synced with the contract;
 5. strict TypeScript compilation;
 6. the production Vite build.
 
-Observed:
+The escrow is tested on the real GenVM SDK:
+
+```bash
+pip install -r requirements-test.txt
+python -m pytest tests/direct -q -p no:cacheprovider   # 38 tests
+python tests/mutation_check.py                        # 40 mutants
+```
+
+Observed (2026-10-06):
 
 ```text
 73/73 directed/source checks passed
 99/99 direct production-contract checks passed
 Property sweep: 5000 traces / 80313 transitions / 0 invariant failures
-Frontend transaction polling: 5/5 tests passed
+GenVM Direct Mode escrow suite: 38 passed
+Escrow mutation matrix: 40/40 killed
+Frontend tests: 14/14 passed
 Frontend production build: PASS
-Largest JavaScript chunk: 286.93 kB
 ```
+
+Direct Mode mocks the model answer and replaces the native-transfer interface with a recorder, so each payout is checked by recipient and amount. It is not StudioNet consensus evidence; the runtime matrix above is.
 
 ## Direct production-contract coverage
 
@@ -76,9 +115,9 @@ npm run verify:deployed
 npm run verify:runtime-receipts
 ```
 
-The first command fetches the contract code from `0xBe44…907e`, normalizes CRLF/LF only,
+The first command fetches the contract code from the v0.6.0 deployment, normalizes CRLF/LF only,
 and requires both deployed and repository sources to equal SHA256
-`ac4ff25a…704bc`. The second fetches one known successful transaction and one
+`161a7900…202777`. The second fetches one known successful transaction and one
 known rollback and proves the frontend policy resolves them respectively as
 `FINISHED_WITH_RETURN` and `FINISHED_WITH_ERROR`.
 

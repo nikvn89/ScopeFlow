@@ -3,6 +3,8 @@ import { studionet } from 'genlayer-js/chains'
 import { ExecutionResult, TransactionStatus } from 'genlayer-js/types'
 import { CONTRACT_ADDRESS, EXPLORER_BASE } from './config'
 import { waitForExplicitExecutionResult } from './transactionExecution'
+import { revertReasonFrom } from './revert'
+import type { Settlement } from './escrow'
 
 export type RegistryState = {
   project_count: number
@@ -12,6 +14,8 @@ export type RegistryState = {
   default_acceptance_window_seconds?: number
   min_acceptance_window_seconds?: number
   max_acceptance_window_seconds?: number
+  funded_escrow?: boolean
+  max_escrow_wei?: string
 }
 
 export type ScopeProject = {
@@ -52,6 +56,16 @@ export type ScopeProject = {
     | 'CLOSED'
     | string
   created_at: number
+  // v0.6.0 escrow (wei as decimal strings)
+  escrow_wei?: string
+  contractor_due_wei?: string
+  client_due_wei?: string
+  contractor_paid_wei?: string
+  client_refunded_wei?: string
+  settled?: boolean
+  refund_pending_expiry?: boolean
+  client_settlement?: Settlement
+  contractor_settlement?: Settlement
 }
 
 export type ClientProjectSummary = {
@@ -66,6 +80,7 @@ export type ClientProjectSummary = {
   expired?: boolean
   closed?: boolean
   acceptance_deadline?: number
+  escrow_wei?: string
   status:
     | 'PENDING_CONTRACTOR_ACCEPTANCE'
     | 'ACTIVE'
@@ -98,6 +113,9 @@ export type ScopeRequest = {
   applied?: boolean
   created_at?: number
   status: string
+  price_wei?: string
+  deposit_wei?: string
+  deposit_returned?: boolean
 }
 
 
@@ -187,14 +205,40 @@ export async function connectWallet(): Promise<`0x${string}`> {
 
   const account = address as `0x${string}`
 
-  const walletClient = createClient({
-    chain: studionet,
-    account,
-    provider,
-  })
-
-  await walletClient.connect('studionet')
+  await ensureStudioNet()
   return account
+}
+
+const STUDIONET_CHAIN_ID = 61999
+const STUDIONET_CHAIN_HEX = `0x${STUDIONET_CHAIN_ID.toString(16)}`
+const WALLET_ADD_RPC = 'https://studio.genlayer.com/api'
+
+/**
+ * Put the wallet on StudioNet with wallet_switchEthereumChain, adding the
+ * network when the wallet does not know it (4902). No Snap is requested.
+ */
+export async function ensureStudioNet(): Promise<void> {
+  const provider = requireProvider()
+  const current = (await provider.request({ method: 'eth_chainId' })) as string
+  if (Number.parseInt(current, 16) === STUDIONET_CHAIN_ID) return
+  try {
+    await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: STUDIONET_CHAIN_HEX }] })
+    return
+  } catch (error) {
+    const code = Number((error as { code?: unknown })?.code)
+    if (code === 4001) throw new Error('Network switch was rejected in the wallet.')
+    if (code !== 4902) throw error
+  }
+  await provider.request({
+    method: 'wallet_addEthereumChain',
+    params: [{
+      chainId: STUDIONET_CHAIN_HEX,
+      chainName: 'GenLayer Studio Network',
+      rpcUrls: [WALLET_ADD_RPC],
+      nativeCurrency: { name: 'GEN Token', symbol: 'GEN', decimals: 18 },
+    }],
+  })
+  await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: STUDIONET_CHAIN_HEX }] })
 }
 
 export async function readRegistry(): Promise<RegistryState> {
@@ -296,9 +340,12 @@ function timeoutAfter(ms: number): Promise<never> {
 async function submitWrite(
   account: `0x${string}`,
   functionName: string,
-  args: Array<string | number>,
+  args: Array<string | number | bigint>,
+  value: bigint = 0n,
 ): Promise<WriteOutcome> {
   const provider = requireProvider()
+
+  await ensureStudioNet()
 
   const walletClient = createClient({
     chain: studionet,
@@ -306,13 +353,11 @@ async function submitWrite(
     provider,
   })
 
-  await walletClient.connect('studionet')
-
   const hash = await walletClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName,
-    args,
-    value: 0n,
+    args: args as any,
+    value,
   })
 
   let receipt: Record<string, unknown>
@@ -337,21 +382,36 @@ async function submitWrite(
     }
   }
 
+  let lastSnapshot: Record<string, unknown> = receipt
   const executionName = await waitForExplicitExecutionResult(
     receipt,
-    async () =>
-      (await readClient.request({
+    async () => {
+      lastSnapshot = (await readClient.request({
         method: 'eth_getTransactionByHash',
         params: [hash],
-      })) as Record<string, unknown>,
+      })) as Record<string, unknown>
+      return lastSnapshot
+    },
   )
 
   if (executionName === ExecutionResult.FINISHED_WITH_ERROR) {
+    let reason = revertReasonFrom(lastSnapshot) ?? revertReasonFrom(receipt)
+    if (!reason) {
+      try {
+        reason = revertReasonFrom(await readClient.request({
+          method: 'eth_getTransactionByHash',
+          params: [hash],
+        }))
+      } catch {
+        reason = null
+      }
+    }
     return {
       kind: 'failed',
       hash,
-      error:
-        'Consensus accepted the transaction, but contract execution returned FINISHED_WITH_ERROR. No success is claimed; the project state was refreshed for rollback verification.',
+      error: reason
+        ? `The contract rejected it: ${reason}. No state changed.`
+        : 'Consensus accepted the transaction, but contract execution returned FINISHED_WITH_ERROR. No success is claimed; the project state was refreshed for rollback verification.',
     }
   }
 
@@ -380,12 +440,53 @@ export function createProjectWithWindow(
   contractor: string,
   initialScope: string,
   acceptanceWindowSeconds: number,
+  escrowWei: bigint = 0n,
 ) {
   return submitWrite(account, 'create_project_with_window', [
     contractor,
     initialScope,
     acceptanceWindowSeconds,
-  ])
+  ], escrowWei)
+}
+
+export function fundProject(
+  account: `0x${string}`,
+  projectId: number,
+  amountWei: bigint,
+) {
+  return submitWrite(account, 'fund_project', [projectId], amountWei)
+}
+
+export function proposeSettlement(
+  account: `0x${string}`,
+  projectId: number,
+  contractorShareWei: bigint,
+) {
+  return submitWrite(account, 'propose_settlement', [projectId, contractorShareWei])
+}
+
+export function withdrawDue(
+  account: `0x${string}`,
+  projectId: number,
+) {
+  return submitWrite(account, 'withdraw', [projectId])
+}
+
+export function reclaimExtensionDeposit(
+  account: `0x${string}`,
+  projectId: number,
+  requestId: number,
+) {
+  return submitWrite(account, 'reclaim_extension_deposit', [projectId, requestId])
+}
+
+export function submitPricedRequest(
+  account: `0x${string}`,
+  projectId: number,
+  text: string,
+  priceWei: bigint,
+) {
+  return submitWrite(account, 'submit_priced_request', [projectId, text, priceWei])
 }
 
 export function acceptProject(
@@ -435,8 +536,9 @@ export function approveExtension(
   account: `0x${string}`,
   projectId: number,
   requestId: number,
+  depositWei: bigint = 0n,
 ) {
-  return submitWrite(account, 'approve_extension', [projectId, requestId])
+  return submitWrite(account, 'approve_extension', [projectId, requestId], depositWei)
 }
 
 export function rejectExtension(

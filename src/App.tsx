@@ -19,6 +19,11 @@ import {
   readScopeVersions,
   rejectExtension,
   submitRequest,
+  submitPricedRequest,
+  fundProject,
+  proposeSettlement,
+  withdrawDue,
+  reclaimExtensionDeposit,
   type ClientProjectSummary,
   type RegistryState,
   type ScopeProject,
@@ -36,6 +41,15 @@ import {
   PAGE_SIZE,
 } from './lib/config'
 import { normalizeError } from './lib/errors'
+import {
+  approvalValue,
+  canReclaimDeposit,
+  escrowActions,
+  formatGen,
+  parseGen,
+  settlementView,
+  wei,
+} from './lib/escrow'
 
 type WorkspaceTab = 'project' | 'requests' | 'history'
 type Role = 'CLIENT' | 'CONTRACTOR' | 'OBSERVER'
@@ -185,6 +199,7 @@ function RequestCard({
   busy,
   onApprove,
   onReject,
+  onReclaim,
   compact = false,
 }: {
   request: ScopeRequest
@@ -194,8 +209,12 @@ function RequestCard({
   busy: string | null
   onApprove: (id: number) => void
   onReject: (id: number) => void
+  onReclaim?: (id: number) => void
   compact?: boolean
 }) {
+  const price = wei(request.price_wei)
+  const deposit = wei(request.deposit_wei)
+  const depositToApprove = approvalValue(role, request.price_wei)
   const projectActive = project.status === 'ACTIVE'
   const liveExtension =
     projectActive &&
@@ -252,6 +271,17 @@ function RequestCard({
             Current scope is <strong>V{project.active_scope_version}</strong>
           </span>
         )}
+        {request.classification === 'SCOPE_EXTENSION' && (
+          <span>
+            Price <strong>{price > 0n ? formatGen(price) : 'none'}</strong>
+          </span>
+        )}
+        {deposit > 0n && (
+          <span>
+            Client deposit held <strong>{formatGen(deposit)}</strong>
+          </span>
+        )}
+        {request.deposit_returned && <span>Deposit returned to the client</span>}
       </div>
 
       {request.classification === 'SCOPE_EXTENSION' && (
@@ -279,7 +309,11 @@ function RequestCard({
               disabled={Boolean(approveReason) || busy !== null}
               onClick={() => onApprove(request.request_id)}
             >
-              {busy === `approve-${request.request_id}` ? 'Approving…' : 'Approve'}
+              {busy === `approve-${request.request_id}`
+                ? 'Approving…'
+                : depositToApprove > 0n
+                  ? `Approve & deposit ${formatGen(depositToApprove)}`
+                  : 'Approve'}
             </button>
             {approveReason && <small>{approveReason}</small>}
           </div>
@@ -295,7 +329,143 @@ function RequestCard({
           </div>
         </div>
       )}
+
+      {onReclaim && canReclaimDeposit(role, request) && (
+        <div className="request-actions">
+          <div>
+            <button
+              className="button button-secondary"
+              disabled={busy !== null}
+              onClick={() => onReclaim(request.request_id)}
+            >
+              {busy === `reclaim-${request.request_id}` ? 'Reclaiming…' : `Reclaim ${formatGen(deposit)} deposit`}
+            </button>
+            <small>This extension will not be applied, so the deposit goes back to you.</small>
+          </div>
+        </div>
+      )}
     </article>
+  )
+}
+
+function EscrowPanel({
+  project,
+  role,
+  busy,
+  fundInput,
+  setFundInput,
+  settlementInput,
+  setSettlementInput,
+  onFund,
+  onWithdraw,
+  onPropose,
+}: {
+  project: ScopeProject
+  role: Role
+  busy: string | null
+  fundInput: string
+  setFundInput: (value: string) => void
+  settlementInput: string
+  setSettlementInput: (value: string) => void
+  onFund: () => void
+  onWithdraw: () => void
+  onPropose: (share?: bigint) => void
+}) {
+  if (project.escrow_wei === undefined) return null
+  const actions = escrowActions(project, role)
+  const settlement = settlementView(project, role)
+  const escrow = actions.escrow
+  return (
+    <section className="panel escrow-card">
+      <span className="eyebrow">ESCROW</span>
+      <strong className="escrow-amount">{formatGen(escrow)}</strong>
+      <p>{actions.note}</p>
+
+      <div className="escrow-grid">
+        <div>
+          <small>Contractor due</small>
+          <strong>{formatGen(wei(project.contractor_due_wei))}</strong>
+        </div>
+        <div>
+          <small>Client refund due</small>
+          <strong>{formatGen(wei(project.client_due_wei))}</strong>
+        </div>
+        <div>
+          <small>Paid to contractor</small>
+          <strong>{formatGen(wei(project.contractor_paid_wei))}</strong>
+        </div>
+        <div>
+          <small>Refunded to client</small>
+          <strong>{formatGen(wei(project.client_refunded_wei))}</strong>
+        </div>
+      </div>
+
+      {actions.canWithdraw && (
+        <button className="button button-primary full-width-action" disabled={busy !== null} onClick={onWithdraw}>
+          {busy === 'withdraw' ? 'Withdrawing…' : `Withdraw ${formatGen(actions.myDue)}`}
+        </button>
+      )}
+
+      {actions.canFund && (
+        <div className="inline-form">
+          <input
+            inputMode="decimal"
+            value={fundInput}
+            onChange={(event) => setFundInput(event.target.value)}
+            placeholder="Add GEN"
+          />
+          <button className="button button-secondary" disabled={busy !== null || !fundInput.trim()} onClick={onFund}>
+            {busy === 'fund' ? 'Funding…' : 'Fund escrow'}
+          </button>
+        </div>
+      )}
+
+      {actions.canSettle && settlement && (
+        <div className="settlement-box">
+          <span className="eyebrow">SETTLE EARLY · AGREED SPLIT</span>
+          <p>
+            If the work ends early, both parties propose the Contractor&apos;s share of {formatGen(escrow)}. Matching
+            proposals close the project and split the escrow; the rest goes back to the Client.
+          </p>
+          <div className="approval-grid">
+            <div className={settlement.mine ? 'approval approved' : 'approval'}>
+              <span>You propose</span>
+              <strong>{settlement.mine ? formatGen(wei(settlement.mine.contractor_share_wei)) : '—'}</strong>
+            </div>
+            <div className={settlement.theirs ? 'approval approved' : 'approval'}>
+              <span>{role === 'CLIENT' ? 'Contractor' : 'Client'} proposes</span>
+              <strong>{settlement.theirs ? formatGen(settlement.theirShare) : '—'}</strong>
+            </div>
+          </div>
+          {settlement.canMatch && (
+            <button
+              className="button button-primary full-width-action"
+              disabled={busy !== null}
+              onClick={() => onPropose(settlement.theirShare)}
+            >
+              {busy === 'settle'
+                ? 'Settling…'
+                : `Accept: ${formatGen(settlement.theirShare)} to Contractor, ${formatGen(escrow - settlement.theirShare)} back to Client`}
+            </button>
+          )}
+          <div className="inline-form">
+            <input
+              inputMode="decimal"
+              value={settlementInput}
+              onChange={(event) => setSettlementInput(event.target.value)}
+              placeholder="Contractor share in GEN"
+            />
+            <button
+              className="button button-secondary"
+              disabled={busy !== null || !settlementInput.trim()}
+              onClick={() => onPropose()}
+            >
+              {busy === 'settle' ? 'Proposing…' : 'Propose split'}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -318,6 +488,10 @@ export default function App() {
   const [acceptanceWindowInput, setAcceptanceWindowInput] = useState('600')
   const [openIdInput, setOpenIdInput] = useState('')
   const [requestText, setRequestText] = useState('')
+  const [escrowInput, setEscrowInput] = useState('')
+  const [fundInput, setFundInput] = useState('')
+  const [settlementInput, setSettlementInput] = useState('')
+  const [priceInput, setPriceInput] = useState('')
 
   const [loadingDashboard, setLoadingDashboard] = useState(true)
   const [loadingProject, setLoadingProject] = useState(false)
@@ -593,6 +767,14 @@ export default function App() {
       return
     }
 
+    let escrowWei: bigint
+    try {
+      escrowWei = parseGen(escrowInput)
+    } catch (error) {
+      setNotice({ kind: 'error', title: 'Invalid escrow amount', message: normalizeError(error) })
+      return
+    }
+
     let expectedProjectId: number
     try {
       expectedProjectId = (await readRegistry()).project_count + 1
@@ -606,7 +788,7 @@ export default function App() {
     }
 
     const outcome = await executeWrite('create-project', () =>
-      createProjectWithWindow(account, contractor, scope, acceptanceWindow),
+      createProjectWithWindow(account, contractor, scope, acceptanceWindow, escrowWei),
     )
 
     if (!outcome || outcome.kind !== 'succeeded') return
@@ -618,13 +800,15 @@ export default function App() {
       if (
         !sameAddress(created.client, account) ||
         !sameAddress(created.contractor, contractor) ||
-        created.status !== 'PENDING_CONTRACTOR_ACCEPTANCE'
+        created.status !== 'PENDING_CONTRACTOR_ACCEPTANCE' ||
+        wei(created.escrow_wei) !== escrowWei
       ) {
         throw new Error('Creation receipt succeeded, but the expected project postcondition was not found.')
       }
 
       setContractorInput('')
       setScopeInput('')
+      setEscrowInput('')
       await refreshDashboard(account)
       await openProject(expectedProjectId)
       setWorkspaceTab('project')
@@ -783,8 +967,18 @@ export default function App() {
       return
     }
 
+    let priceWei: bigint
+    try {
+      priceWei = parseGen(priceInput)
+    } catch (error) {
+      setNotice({ kind: 'error', title: 'Invalid price', message: normalizeError(error) })
+      return
+    }
+
     const outcome = await executeWrite('submit-request', () =>
-      submitRequest(account, project.project_id, clean),
+      priceWei > 0n
+        ? submitPricedRequest(account, project.project_id, clean, priceWei)
+        : submitRequest(account, project.project_id, clean),
     )
 
     if (outcome?.kind === 'succeeded') {
@@ -803,6 +997,7 @@ export default function App() {
       )
       if (!verified) return
       setRequestText('')
+      setPriceInput('')
       await openProject(project.project_id, pageStart)
     }
   }
@@ -812,9 +1007,11 @@ export default function App() {
 
     const votingRole = role
     const versionBefore = project.active_scope_version
+    const target = requests.find((item) => item.request_id === requestId)
+    const deposit = approvalValue(votingRole, target?.price_wei)
 
     const outcome = await executeWrite(`approve-${requestId}`, () =>
-      approveExtension(account, project.project_id, requestId),
+      approveExtension(account, project.project_id, requestId, deposit),
     )
 
     if (outcome?.kind === 'succeeded') {
@@ -862,6 +1059,116 @@ export default function App() {
         'Rejection executed, but terminal REJECTED_EXTENSION state was not observed.',
       )
       if (!verified) return
+      await openProject(project.project_id, pageStart)
+    }
+  }
+
+  async function handleReclaimDeposit(requestId: number) {
+    if (!account || !project) return
+
+    const outcome = await executeWrite(`reclaim-${requestId}`, () =>
+      reclaimExtensionDeposit(account, project.project_id, requestId),
+    )
+
+    if (outcome?.kind === 'succeeded') {
+      await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => {
+          const next = await readRequest(project.project_id, requestId)
+          return wei(next.deposit_wei) === 0n && next.deposit_returned === true
+        },
+        'Reclaim executed, but the cleared deposit was not observed.',
+      )
+      if (!verified) return
+      await openProject(project.project_id, pageStart)
+    }
+  }
+
+  async function handleFund() {
+    if (!account || !project) return
+    let amount: bigint
+    try {
+      amount = parseGen(fundInput)
+      if (amount === 0n) throw new Error('Enter an amount greater than zero.')
+    } catch (error) {
+      setNotice({ kind: 'error', title: 'Invalid amount', message: normalizeError(error) })
+      return
+    }
+    const before = wei(project.escrow_wei)
+
+    const outcome = await executeWrite('fund', () =>
+      fundProject(account, project.project_id, amount),
+    )
+
+    if (outcome?.kind === 'succeeded') {
+      await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => wei((await readProject(project.project_id)).escrow_wei) === before + amount,
+        'Funding executed, but the escrow did not grow by the exact amount.',
+      )
+      if (!verified) return
+      setFundInput('')
+      await openProject(project.project_id, pageStart)
+    }
+  }
+
+  async function handleWithdraw() {
+    if (!account || !project || role === 'OBSERVER') return
+    const withdrawingRole = role
+
+    const outcome = await executeWrite('withdraw', () =>
+      withdrawDue(account, project.project_id),
+    )
+
+    if (outcome?.kind === 'succeeded') {
+      await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => {
+          const next = await readProject(project.project_id)
+          return wei(withdrawingRole === 'CLIENT' ? next.client_due_wei : next.contractor_due_wei) === 0n
+        },
+        'Withdrawal executed, but your due balance was not cleared.',
+      )
+      if (!verified) return
+      await openProject(project.project_id, pageStart)
+    }
+  }
+
+  async function handleProposeSettlement(shareOverride?: bigint) {
+    if (!account || !project || role === 'OBSERVER') return
+    let share: bigint
+    try {
+      share = shareOverride ?? parseGen(settlementInput)
+    } catch (error) {
+      setNotice({ kind: 'error', title: 'Invalid share', message: normalizeError(error) })
+      return
+    }
+    if (share > wei(project.escrow_wei)) {
+      setNotice({ kind: 'error', title: 'Share too large', message: 'The contractor share cannot exceed the escrow.' })
+      return
+    }
+    const proposingRole = role
+
+    const outcome = await executeWrite('settle', () =>
+      proposeSettlement(account, project.project_id, share),
+    )
+
+    if (outcome?.kind === 'succeeded') {
+      await new Promise((resolve) => window.setTimeout(resolve, 1200))
+      const verified = await verifyPostcondition(
+        outcome,
+        async () => {
+          const next = await readProject(project.project_id)
+          const mine = proposingRole === 'CLIENT' ? next.client_settlement : next.contractor_settlement
+          return next.closed || (!!mine && wei(mine.contractor_share_wei) === share)
+        },
+        'Settlement proposal executed, but it was not observed on the project.',
+      )
+      if (!verified) return
+      setSettlementInput('')
       await openProject(project.project_id, pageStart)
     }
   }
@@ -1107,6 +1414,20 @@ export default function App() {
                     rows={7}
                     placeholder="Describe the work already agreed between Client and Contractor..."
                   />
+                </label>
+
+                <label>
+                  <span>Escrow deposit (GEN)</span>
+                  <input
+                    inputMode="decimal"
+                    value={escrowInput}
+                    onChange={(event) => setEscrowInput(event.target.value)}
+                    placeholder="0"
+                  />
+                  <small className="field-note">
+                    Held by the contract. Paid to the Contractor on mutual close, refunded if the
+                    project is cancelled, declined or expires. You can add more later.
+                  </small>
                 </label>
 
                 <label>
@@ -1518,6 +1839,19 @@ export default function App() {
                     </section>
                   )}
 
+                  <EscrowPanel
+                    project={project}
+                    role={role}
+                    busy={busy}
+                    fundInput={fundInput}
+                    setFundInput={setFundInput}
+                    settlementInput={settlementInput}
+                    setSettlementInput={setSettlementInput}
+                    onFund={() => void handleFund()}
+                    onWithdraw={() => void handleWithdraw()}
+                    onPropose={(share) => void handleProposeSettlement(share)}
+                  />
+
                   <section className="panel stats-card">
                     <div>
                       <small>Active version</small>
@@ -1542,7 +1876,7 @@ export default function App() {
                       </li>
                       <li>
                         <strong>Scope extension</strong>
-                        <span>Both parties must consent.</span>
+                        <span>Both parties must consent; the Client deposits its price.</span>
                       </li>
                       <li>
                         <strong>Needs clarification</strong>
@@ -1572,6 +1906,21 @@ export default function App() {
                     placeholder="Example: Add a full dark mode theme across every page of the website."
                     rows={7}
                   />
+
+                  <label className="price-field">
+                    <span>Price if GenLayer classifies it as an extension (GEN, optional)</span>
+                    <input
+                      inputMode="decimal"
+                      value={priceInput}
+                      disabled={project.status !== 'ACTIVE'}
+                      onChange={(event) => setPriceInput(event.target.value)}
+                      placeholder="0"
+                    />
+                    <small className="field-note">
+                      In-scope work is already paid by the escrow, so the contract drops the price unless the
+                      request is a scope extension. The Client deposits it when approving.
+                    </small>
+                  </label>
 
                   <div className="input-footer">
                     <span>
@@ -1809,6 +2158,7 @@ export default function App() {
                         busy={busy}
                         onApprove={(id) => void handleApprove(id)}
                         onReject={(id) => void handleReject(id)}
+                        onReclaim={(id) => void handleReclaimDeposit(id)}
                         compact
                       />
                     ))}
