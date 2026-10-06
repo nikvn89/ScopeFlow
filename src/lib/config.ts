@@ -1,6 +1,6 @@
 export const CONTRACT_ADDRESS =
   (import.meta.env.VITE_CONTRACT_ADDRESS as `0x${string}` | undefined) ??
-  '0xBe44d208A83b15973b91932f75eaA354795E907e'
+  '0x64F2a2C73203448bBF258CF842D308ffEdDDC5D0'
 
 export const EXPLORER_BASE = 'https://explorer-studio.genlayer.com'
 export const APP_NAME = 'ScopeFlow'

@@ -12,8 +12,9 @@ ScopeFlow lets a Client commit an initial scope, requires explicit Contractor op
 Contract version: 0.6.0
 Source: contracts/ScopeFlow.py
 Source SHA256: 161a7900286927010281b976ff617f222e3a17ae5440462b294982bd10202777
-Deployment: ⟨v0.6.0 address⟩
-Deploy Tx: ⟨v0.6.0 deploy tx⟩
+Deployment: 0x64F2a2C73203448bBF258CF842D308ffEdDDC5D0
+Deploy Tx: 0x57fda4a4f6300a8065ebbc6e205903c948a150a00cc9f95191c36f6f91b2fbf2
+Runtime status: escrow, priced extension, agreed split, withdrawals and decline refund verified on StudioNet (TESTING.md)
 ```
 
 ### Accepted baseline — unchanged
@@ -173,7 +174,7 @@ The dApp:
 
 - switches or adds StudioNet with standard wallet RPC (no GenLayer Snap);
 - shows the contract's own revert sentence when a write rolls back;
-- waits for `FINALIZED`;
+- waits for `ACCEPTED`, then requires an explicit leader execution result (it re-reads state as soon as consensus accepts, instead of waiting minutes for finality);
 - polls finalized transactions whose execution result is briefly absent;
 - distinguishes `FINISHED_WITH_RETURN` from `FINISHED_WITH_ERROR`;
 - never treats consensus acceptance alone as execution success;
@@ -184,7 +185,7 @@ The dApp:
 Production targets the v0.6.0 deployment:
 
 ```text
-VITE_CONTRACT_ADDRESS=⟨v0.6.0 address⟩
+VITE_CONTRACT_ADDRESS=0x64F2a2C73203448bBF258CF842D308ffEdDDC5D0
 ```
 
 ## Evidence

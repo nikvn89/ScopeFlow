@@ -5,7 +5,7 @@ import { createClient } from 'genlayer-js'
 import { studionet } from 'genlayer-js/chains'
 
 // v0.6.0 deployment. Pass another address as the first argument to check it instead.
-const DEPLOYED_V060 = ''
+const DEPLOYED_V060 = '0x64F2a2C73203448bBF258CF842D308ffEdDDC5D0'
 const address = process.argv[2] ?? DEPLOYED_V060
 const expectedSha =
   '161a7900286927010281b976ff617f222e3a17ae5440462b294982bd10202777'

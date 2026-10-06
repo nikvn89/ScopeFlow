@@ -17,6 +17,7 @@
 - The prompt fence removed reserved markers in exact case only (`</change_request>` passed through). Markers are now removed in any case, repeatedly, until none remains.
 - Wallet writes no longer call `connect('studionet')` (GenLayer Snap); the app switches or adds the network with standard wallet RPC.
 - A rolled-back write now shows the contract's own revert sentence instead of a generic failure.
+- Writes are confirmed at `ACCEPTED` with an explicit leader `SUCCESS` (previously the app waited 90 s for `FINALIZED`, timed out on StudioNet and asked for a manual refresh).
 
 ### Preserved
 
@@ -32,7 +33,7 @@
 ### Deployment status
 
 ```text
-Milestone v3 v0.6.0: ⟨v0.6.0 address⟩
+Milestone v3 v0.6.0: 0x64F2a2C73203448bBF258CF842D308ffEdDDC5D0
 Source SHA256:       161a7900286927010281b976ff617f222e3a17ae5440462b294982bd10202777
 ```
 
