@@ -366,9 +366,9 @@ async function submitWrite(
     receipt = (await Promise.race([
       readClient.waitForTransactionReceipt({
         hash,
-        status: TransactionStatus.FINALIZED,
+        status: TransactionStatus.ACCEPTED,
       }),
-      timeoutAfter(90_000),
+      timeoutAfter(180_000),
     ])) as Record<string, unknown>
 
   } catch (error) {
