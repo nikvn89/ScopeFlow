@@ -22,7 +22,8 @@ The semantic classification task, escrow, priced extensions, version ledger and 
 - Historical v3 address: `0x64F2a2C73203448bBF258CF842D308ffEdDDC5D0` (contract 0.6.0).
 - Current source: `contracts/ScopeFlow.py`, class `ScopeGuard`, **no constructor arguments**, contract **0.7.0**.
 - Current source fingerprint and deployment status: [release.json](release.json).
-- **Fresh v4 deployment and on-chain runtime: pending.** Do not use or upgrade the reviewed v3 deployment for these tests.
+- New v4 address: [`0x08F49e8929c7c49E2eBA30785661c0eA84b6b104`](https://explorer-studio.genlayer.com/address/0x08F49e8929c7c49E2eBA30785661c0eA84b6b104). Deployed source equals the frozen repository source; finalized registry reports `0.7.0` and `settlement_offers: true` (checked 21 October 2026).
+- **Offer/escrow runtime remains pending.** No project existed at the verification snapshot. The reviewed v3 deployment remains unchanged.
 
 This source requires a fresh instance. It does not migrate existing projects or balances.
 
@@ -34,13 +35,13 @@ npm run verify
 npm run dev
 ```
 
-Deploy `contracts/ScopeFlow.py` as a new instance in GenLayer Studio. Read `get_registry` and confirm `contract_version: "0.7.0"` and `settlement_offers: true`. Verify exact deployed source:
+The new instance has been deployed. To recheck source parity, run:
 
 ```bash
-npm run verify:deployed -- 0xYOUR_NEW_DEPLOYMENT
+npm run verify:deployed -- 0x08F49e8929c7c49E2eBA30785661c0eA84b6b104
 ```
 
-Set `VITE_CONTRACT_ADDRESS` to that address in a local `.env` or in Vercel environment variables, then rebuild/redeploy. `.env.example` deliberately has no old-address fallback. The write client checks the deployed profile and the selected wallet before asking for a signature. Use Vite's build command `npm run build` and output directory `dist` on Vercel.
+The checked address is the source default in `src/lib/config.ts` and is recorded in `.env.example`. If Vercel already defines `VITE_CONTRACT_ADDRESS`, replace its value with this address, then redeploy; environment variables override the source default. A local `.env` can use the same value. The write client checks the deployed profile and the selected wallet before asking for a signature. Use Vite's build command `npm run build` and output directory `dist` on Vercel.
 
 ## Offer API
 

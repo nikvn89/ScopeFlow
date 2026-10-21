@@ -1,6 +1,6 @@
 # v4 important runtime path — NOT RUN
 
-Use a fresh **0.7.0** deployment and two distinct wallets: **A = Client**, **B = Contractor**. The previous 0.6.0 runtime evidence is historical. Obtain some StudioNet GEN for gas in both wallets. Confirm the source with `npm run verify:deployed -- ADDRESS` before signing.
+The new **0.7.0** deployment is `0x08F49e8929c7c49E2eBA30785661c0eA84b6b104`; source parity and finalized registry were checked on 21 October 2026. Use two distinct wallets: **A = Client**, **B = Contractor**. The previous 0.6.0 runtime evidence is historical. Obtain some StudioNet GEN for gas in both wallets. Confirm the source with `npm run verify:deployed -- ADDRESS` before signing.
 
 1. **A creates and funds a project.** Contractor is B. Scope: `Build a responsive marketing website with home, pricing and contact pages, deployed to the client's domain.` Acceptance window 3600 seconds; initial escrow **0.003 GEN**. Record the project ID, creation hash and finalized state.
 2. **B accepts the project.** Expected `ACTIVE`, scope version 1 and escrow 0.003 GEN.
@@ -22,7 +22,7 @@ The helper outputs only selected fields. It does not sign, send funds, expose ra
 
 | Evidence | Current result |
 | --- | --- |
-| New deployment and byte/source parity | PENDING |
+| New deployment source parity and finalized registry | PASS, 0x08F49e8929c7c49E2eBA30785661c0eA84b6b104; deploy transaction hash not yet recorded |
 | Funded creation and contractor opt-in | NOT RUN |
 | Expiry with escrow unchanged | NOT RUN |
 | Cancellation with escrow unchanged | NOT RUN |

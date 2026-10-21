@@ -50,8 +50,8 @@ python tests/mutation_check.py
 
 The frontend suite uses Node's TypeScript stripping (Node 22.18+ or Node 24). SDK version is v0.2.16, genlayer-test 0.29.2, genvm-linter 0.11.0 and pytest 9.1.1. `requirements-test.txt` and `package-lock.json` pin the tooling.
 
-## Fresh runtime remains pending
+## New deployment verified; offer runtime remains pending
 
-No new 0.7.0 deployment address, on-chain offer result or wallet payment is claimed. Browser visual verification and wallet signing were not run in this environment. [RUNTIME_TEST.md](RUNTIME_TEST.md) contains the short manual path. For withdrawals, verify the finalized parent, linked native transfer and recipient balance independently of contract counters.
+On 21 October 2026, `npm run verify:deployed -- 0x08F49e8929c7c49E2eBA30785661c0eA84b6b104` passed. Both normalized source hashes equal the fingerprint above. A `LATEST_FINAL` registry read returned `contract_version: "0.7.0"`, `settlement_offers: true` and `project_count: 0`. The deployment transaction hash has not been supplied. No on-chain offer result or wallet payment is claimed. Browser visual verification and wallet signing were not run in this environment. [RUNTIME_TEST.md](RUNTIME_TEST.md) contains the short manual path. For withdrawals, verify the finalized parent, linked native transfer and recipient balance independently of contract counters.
 
 Historical v3 runtime evidence is preserved in [docs/history/TESTING-v0.6.0.md](docs/history/TESTING-v0.6.0.md); its screenshots and transaction hashes are not v4 runtime evidence. `verify:runtime-receipts` uses historical v2 receipt fixtures and does not run fresh v4 writes.
