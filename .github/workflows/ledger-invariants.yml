@@ -5,6 +5,8 @@ on:
     paths:
       - 'contracts/ScopeFlow.py'
       - 'tests/**'
+      - 'scripts/**'
+      - 'release.json'
       - 'src/**'
       - 'package.json'
       - 'package-lock.json'
@@ -15,6 +17,8 @@ on:
     paths:
       - 'contracts/ScopeFlow.py'
       - 'tests/**'
+      - 'scripts/**'
+      - 'release.json'
       - 'src/**'
       - 'package.json'
       - 'package-lock.json'
