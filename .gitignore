@@ -9,3 +9,7 @@ dist/
 .idea/
 __pycache__/
 *.py[cod]
+
+.pytest_cache/
+.hypothesis/
+artifacts/
