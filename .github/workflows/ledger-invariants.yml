@@ -1,9 +1,10 @@
-name: Scope Ledger Invariants
+name: ScopeFlow delivery and escrow invariants
 
 on:
   push:
     paths:
       - 'contracts/ScopeFlow.py'
+      - 'deploy/ScopeFlow.py'
       - 'tests/**'
       - 'scripts/**'
       - 'release.json'
@@ -16,6 +17,7 @@ on:
   pull_request:
     paths:
       - 'contracts/ScopeFlow.py'
+      - 'deploy/ScopeFlow.py'
       - 'tests/**'
       - 'scripts/**'
       - 'release.json'
@@ -41,7 +43,7 @@ jobs:
       - run: npm run verify
 
   escrow-genvm:
-    name: Escrow — GenVM Direct Mode, lint, mutation matrix
+    name: Delivery and escrow — SDK, lint, mutation matrix
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -55,6 +57,14 @@ jobs:
       - run: pip install -r requirements-test.txt
       - name: GenVM Direct Mode escrow suite
         run: python -m pytest tests/direct -q -p no:cacheprovider
+      - name: Reproducible compact deployment
+        run: python scripts/compact-contract.py --check
+      - name: Compact deployment SDK suite
+        env:
+          SCOPEFLOW_CONTRACT: deploy/ScopeFlow.py
+        run: python -m pytest tests/direct -q -p no:cacheprovider
+      - name: Compact deployment lint
+        run: python -m genvm_linter.cli lint deploy/ScopeFlow.py
       - name: genvm-linter
         run: python -m genvm_linter.cli lint contracts/ScopeFlow.py
       - name: Escrow mutation matrix
