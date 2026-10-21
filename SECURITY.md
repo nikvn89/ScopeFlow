@@ -12,4 +12,4 @@ There is no arbiter, unilateral escape, identity verification, real-world delive
 
 The write client checks version/capability/account before signing and requires finalized leader normal-return evidence. It verifies relevant postconditions against finalized state. Unknown evidence remains unconfirmed. A successful withdrawal parent or contract "paid" counter is not sufficient proof of asynchronous native transfer delivery. Inspect the linked transfer and recipient balance before claiming payment.
 
-The 0.7.0 candidate requires a fresh deployment; no migration is provided. Fresh on-chain offer and delivery tests are pending. Local SDK tests use controlled model answers and a native-transfer recorder and are not network consensus tests.
+The 0.7.0 candidate requires a fresh deployment; no migration is provided. The core on-chain offer and native delivery path passed on 21 October 2026; see RUNTIME_TEST.md. Runtime negative writes and fresh semantic-model accuracy tests are not claimed. Local SDK tests use controlled model answers and a native-transfer recorder and are not network consensus tests.

@@ -1,0 +1,435 @@
+{
+  "observed_at": "2026-10-21T06:22:15.047Z",
+  "address": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+  "transactions": [
+    {
+      "hash": "0x270854b075bd50aac129abec7e28a189322787241a679deaf988c10d8d125d55",
+      "status": "FINALIZED",
+      "type": 0,
+      "from": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "to": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "value_wei": "2000000000000000",
+      "triggered_by": "0x4aa1e951c57627c9cb8058fb00205defcd7b550462ffba8d9d148ee0ef46bb1b",
+      "triggered_transactions": [],
+      "value_credited": true,
+      "created_at": "2026-10-21T06:14:43.953043+00:00",
+      "method": null,
+      "args": null,
+      "execution": null
+    },
+    {
+      "hash": "0x4aa1e951c57627c9cb8058fb00205defcd7b550462ffba8d9d148ee0ef46bb1b",
+      "status": "FINALIZED",
+      "type": 2,
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "value_wei": "0",
+      "triggered_by": null,
+      "triggered_transactions": [
+        "0x270854b075bd50aac129abec7e28a189322787241a679deaf988c10d8d125d55"
+      ],
+      "value_credited": false,
+      "created_at": "2026-10-21T06:14:07.842490+00:00",
+      "method": "withdraw",
+      "args": [
+        "1"
+      ],
+      "execution": "FINISHED_WITH_RETURN",
+      "leader_execution": "SUCCESS",
+      "leader_result": "AAA="
+    },
+    {
+      "hash": "0x20f1fab2f11890fe2dd37f8b018e8154a24cf92fff1c38523fae5d876c448f4b",
+      "status": "FINALIZED",
+      "type": 0,
+      "from": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "to": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "value_wei": "1000000000000000",
+      "triggered_by": "0x889160efef4a062b3c61a59ccb99af04d3794944188f0499b621af49fc7ef1db",
+      "triggered_transactions": [],
+      "value_credited": true,
+      "created_at": "2026-10-21T06:11:02.593960+00:00",
+      "method": null,
+      "args": null,
+      "execution": null
+    },
+    {
+      "hash": "0x889160efef4a062b3c61a59ccb99af04d3794944188f0499b621af49fc7ef1db",
+      "status": "FINALIZED",
+      "type": 2,
+      "from": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "to": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "value_wei": "0",
+      "triggered_by": null,
+      "triggered_transactions": [
+        "0x20f1fab2f11890fe2dd37f8b018e8154a24cf92fff1c38523fae5d876c448f4b"
+      ],
+      "value_credited": false,
+      "created_at": "2026-10-21T06:10:28.198802+00:00",
+      "method": "withdraw",
+      "args": [
+        "1"
+      ],
+      "execution": "FINISHED_WITH_RETURN",
+      "leader_execution": "SUCCESS",
+      "leader_result": "AAA="
+    },
+    {
+      "hash": "0x763e1ff5820474cd6b84fc6b69d2a482914edf7305b10bc0caef4f6f4cb40b17",
+      "status": "FINALIZED",
+      "type": 2,
+      "from": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "to": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "value_wei": "0",
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T06:06:20.973517+00:00",
+      "method": "accept_settlement_offer",
+      "args": [
+        "1",
+        "3"
+      ],
+      "execution": "FINISHED_WITH_RETURN",
+      "leader_execution": "SUCCESS",
+      "leader_result": "AAA="
+    },
+    {
+      "hash": "0xe65160f8502e48f683fec1a5e6681ef8b3ee94bc03af40a24bf648fe48e211c8",
+      "status": "FINALIZED",
+      "type": 2,
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "value_wei": "0",
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T06:02:56.962891+00:00",
+      "method": "propose_settlement_with_window",
+      "args": [
+        "1",
+        "2000000000000000",
+        "3600"
+      ],
+      "execution": "FINISHED_WITH_RETURN",
+      "leader_execution": "SUCCESS",
+      "leader_result": "AAA="
+    },
+    {
+      "hash": "0x22d97acd0a12ab43e3e7cbbcf36bb8532458b692383760b2a0fc454c476c1ef7",
+      "status": "FINALIZED",
+      "type": 2,
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "value_wei": "0",
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T06:00:28.782417+00:00",
+      "method": "cancel_settlement_offer",
+      "args": [
+        "1",
+        "2"
+      ],
+      "execution": "FINISHED_WITH_RETURN",
+      "leader_execution": "SUCCESS",
+      "leader_result": "AAA="
+    },
+    {
+      "hash": "0xe7dc2e916f8d091c04d541e5d41077c29641cea7489cc57d0e65a741ceb82e94",
+      "status": "FINALIZED",
+      "type": 2,
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "value_wei": "0",
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T05:58:28.359444+00:00",
+      "method": "propose_settlement_with_window",
+      "args": [
+        "1",
+        "2000000000000000",
+        "3600"
+      ],
+      "execution": "FINISHED_WITH_RETURN",
+      "leader_execution": "SUCCESS",
+      "leader_result": "AAA="
+    },
+    {
+      "hash": "0xf90c02e6f255f4aee993f9a7a81842fa8c70fb111db4f6c502da82428aee536d",
+      "status": "FINALIZED",
+      "type": 2,
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "value_wei": "0",
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T05:51:01.283051+00:00",
+      "method": "propose_settlement_with_window",
+      "args": [
+        "1",
+        "2000000000000000",
+        "60"
+      ],
+      "execution": "FINISHED_WITH_RETURN",
+      "leader_execution": "SUCCESS",
+      "leader_result": "AAA="
+    },
+    {
+      "hash": "0xc799aeac0b34afa939cf71193b4148d64e32d97dc8a05c3a8c71f6c3de7b0b22",
+      "status": "FINALIZED",
+      "type": 2,
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "value_wei": "0",
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T05:34:34.352188+00:00",
+      "method": "accept_project",
+      "args": [
+        "1"
+      ],
+      "execution": "FINISHED_WITH_RETURN",
+      "leader_execution": "SUCCESS",
+      "leader_result": "AAA="
+    },
+    {
+      "hash": "0xb4fddd970451622c3b8ad07e50a8a220e069c62d0a8295b5d76d93c198bee832",
+      "status": "FINALIZED",
+      "type": 2,
+      "from": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "to": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "value_wei": "3000000000000000",
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": true,
+      "created_at": "2026-10-21T05:28:03.248805+00:00",
+      "method": "create_project_with_window",
+      "args": [
+        "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+        "Build a responsive marketing website with home, pricing and contact pages, deployed to the client's domain.",
+        "3600"
+      ],
+      "execution": "FINISHED_WITH_RETURN",
+      "leader_execution": "SUCCESS",
+      "leader_result": "AAA="
+    },
+    {
+      "hash": "0xb528a3ce88844276a25e48fbcd049d040f921f89456d13049700b62031f0d365",
+      "status": "FINALIZED",
+      "type": 1,
+      "from": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "to": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "value_wei": "0",
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T02:54:05.302570+00:00",
+      "method": null,
+      "args": null,
+      "execution": "FINISHED_WITH_RETURN",
+      "leader_execution": "SUCCESS",
+      "leader_result": "AAA="
+    }
+  ],
+  "project": {
+    "project_id": 1,
+    "client": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+    "contractor": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+    "active_scope_version": 1,
+    "active_scope": "Build a responsive marketing website with home, pricing and contact pages, deployed to the client's domain.",
+    "scope_length": 107,
+    "scope_capacity_left": 5893,
+    "request_count": 0,
+    "scope_version_count": 1,
+    "accepted": true,
+    "accepted_at": 1792560874,
+    "cancelled": false,
+    "cancelled_at": 0,
+    "acceptance_deadline": 1792564083,
+    "acceptance_seconds_remaining": 0,
+    "declined": false,
+    "declined_at": 0,
+    "expired": false,
+    "expiry_recorded": false,
+    "expired_at": 0,
+    "closed": true,
+    "closed_at": 1792562780,
+    "closed_scope_version": 1,
+    "client_close_vote_version": 0,
+    "contractor_close_vote_version": 0,
+    "client_close_approved": false,
+    "contractor_close_approved": false,
+    "terminal": true,
+    "status": "CLOSED",
+    "created_at": 1792560483,
+    "escrow_wei": "0",
+    "contractor_due_wei": "0",
+    "client_due_wei": "0",
+    "contractor_paid_wei": "2000000000000000",
+    "client_refunded_wei": "1000000000000000",
+    "settled": true,
+    "refund_pending_expiry": false,
+    "chain_timestamp": 1792563733,
+    "settled_offer_id": "3",
+    "settled_offer_role": "CONTRACTOR",
+    "client_settlement": null,
+    "contractor_settlement": {
+      "contractor_share_wei": "2000000000000000",
+      "scope_version": 1,
+      "escrow_wei": "3000000000000000",
+      "offer_id": "3",
+      "created_at": 1792562576,
+      "expires_at": 1792566176,
+      "status": "PROJECT_CLOSED"
+    }
+  },
+  "balances": [
+    {
+      "address": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "balance_wei": "1010077000000000000000"
+    },
+    {
+      "address": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "balance_wei": "27999000000000005000"
+    },
+    {
+      "address": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+      "balance_wei": "0"
+    }
+  ],
+  "historical_postcondition_snapshots": {
+    "date": "2026-10-21",
+    "address": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+    "project_id": 1,
+    "read_variant": "latest-final",
+    "client": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+    "contractor": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+    "funded_creation_and_opt_in": "VERIFIED_IN_FINALIZED_STATE",
+    "expiry": {
+      "result": "PASS",
+      "offer_id": "1",
+      "contractor_share_wei": "2000000000000000",
+      "created_at": 1792561861,
+      "expires_at": 1792561921,
+      "observed_chain_timestamp": 1792562160,
+      "offer_status": "EXPIRED",
+      "project_status": "ACTIVE",
+      "escrow_wei": "3000000000000000",
+      "contractor_due_wei": "0",
+      "client_due_wei": "0",
+      "transaction_hash": "0xf90c02e6f255f4aee993f9a7a81842fa8c70fb111db4f6c502da82428aee536d"
+    },
+    "cancellation": {
+      "result": "PASS",
+      "offer_id": "2",
+      "contractor_share_wei": "2000000000000000",
+      "created_at": 1792562308,
+      "expires_at": 1792565908,
+      "observed_chain_timestamp": 1792562511,
+      "offer_status": "CANCELLED",
+      "project_status": "ACTIVE",
+      "escrow_wei": "3000000000000000",
+      "contractor_due_wei": "0",
+      "client_due_wei": "0",
+      "transaction_hash": "0x22d97acd0a12ab43e3e7cbbcf36bb8532458b692383760b2a0fc454c476c1ef7"
+    },
+    "replacement_and_exact_acceptance": {
+      "result": "PASS",
+      "proposer": "CONTRACTOR",
+      "offer_id": "3",
+      "created_at": 1792562576,
+      "expires_at": 1792566176,
+      "observed_chain_timestamp": 1792562960,
+      "project_status": "CLOSED",
+      "settled": true,
+      "settled_offer_id": "3",
+      "settled_offer_role": "CONTRACTOR",
+      "escrow_wei": "0",
+      "contractor_due_wei": "2000000000000000",
+      "client_due_wei": "1000000000000000",
+      "contractor_paid_wei": "0",
+      "client_refunded_wei": "0",
+      "transaction_hash": "0x763e1ff5820474cd6b84fc6b69d2a482914edf7305b10bc0caef4f6f4cb40b17"
+    },
+    "withdrawal_and_native_delivery": {
+      "result": "PASS",
+      "payments": [
+        {
+          "role": "CLIENT",
+          "parent": "0x889160efef4a062b3c61a59ccb99af04d3794944188f0499b621af49fc7ef1db",
+          "native_transfer": "0x20f1fab2f11890fe2dd37f8b018e8154a24cf92fff1c38523fae5d876c448f4b",
+          "recipient": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "amount_wei": "1000000000000000",
+          "parent_and_child_status": "FINALIZED",
+          "value_credited": true,
+          "observed_balance_increase_wei": "1000000000000000",
+          "result": "PASS"
+        },
+        {
+          "role": "CONTRACTOR",
+          "parent": "0x4aa1e951c57627c9cb8058fb00205defcd7b550462ffba8d9d148ee0ef46bb1b",
+          "native_transfer": "0x270854b075bd50aac129abec7e28a189322787241a679deaf988c10d8d125d55",
+          "recipient": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "amount_wei": "2000000000000000",
+          "parent_and_child_status": "FINALIZED",
+          "value_credited": true,
+          "observed_balance_increase_wei": "2000000000000000",
+          "result": "PASS"
+        }
+      ]
+    }
+  },
+  "balances_before_withdrawal": {
+    "purpose": "Before withdrawal snapshot; balance delivery is not yet verified",
+    "observed_at": "2026-10-21T06:09:51.923Z",
+    "results": [
+      {
+        "address": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+        "balance_wei": "1010076000000000000000"
+      },
+      {
+        "address": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+        "balance_wei": "27997000000000005000"
+      },
+      {
+        "address": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
+        "balance_wei": "3000000000000000"
+      }
+    ]
+  },
+  "verified_withdrawals": [
+    {
+      "role": "CLIENT",
+      "parent": "0x889160efef4a062b3c61a59ccb99af04d3794944188f0499b621af49fc7ef1db",
+      "native_transfer": "0x20f1fab2f11890fe2dd37f8b018e8154a24cf92fff1c38523fae5d876c448f4b",
+      "recipient": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "amount_wei": "1000000000000000",
+      "parent_and_child_status": "FINALIZED",
+      "value_credited": true,
+      "observed_balance_increase_wei": "1000000000000000",
+      "result": "PASS"
+    },
+    {
+      "role": "CONTRACTOR",
+      "parent": "0x4aa1e951c57627c9cb8058fb00205defcd7b550462ffba8d9d148ee0ef46bb1b",
+      "native_transfer": "0x270854b075bd50aac129abec7e28a189322787241a679deaf988c10d8d125d55",
+      "recipient": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "amount_wei": "2000000000000000",
+      "parent_and_child_status": "FINALIZED",
+      "value_credited": true,
+      "observed_balance_increase_wei": "2000000000000000",
+      "result": "PASS"
+    }
+  ],
+  "runtime_result": "PASS: core v4 path and native delivery",
+  "limits": [
+    "Runtime negative authorization/stale-ID/expiry-boundary writes were not repeated on-chain; covered locally.",
+    "No new semantic model verdict was requested in this deterministic settlement runtime.",
+    "Balance increases are observations during this test window, not a general statement about network fees.",
+    "Browser visual/wallet steps were performed by the user; assistant verified finalized RPC state and transfer receipts."
+  ]
+}

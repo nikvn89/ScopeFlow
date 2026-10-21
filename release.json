@@ -1,7 +1,7 @@
 {
   "project": "ScopeFlow",
   "milestone": "v4",
-  "submission_status": "DEPLOYED_SOURCE_VERIFIED_RUNTIME_PENDING",
+  "submission_status": "RUNTIME_VERIFIED_AWAITING_FINAL_GITHUB_COMMIT",
   "contract_version": "0.7.0",
   "network": "StudioNet",
   "chain_id": 61999,
@@ -13,10 +13,11 @@
   "normalization": "CRLF to LF only; no trim",
   "deployment": {
     "address": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
-    "transaction": null,
-    "status": "SOURCE_PARITY_AND_REGISTRY_VERIFIED",
+    "transaction": "0xb528a3ce88844276a25e48fbcd049d040f921f89456d13049700b62031f0d365",
+    "status": "FINALIZED_SOURCE_PARITY_VERIFIED",
     "verified_date": "2026-10-21"
   },
-  "runtime_status": "NOT RUN",
-  "submitted_head_policy": "Use the actual GitHub commit SHA after upload; never main."
+  "runtime_status": "PASS: core v4 offer flow and both native payouts, 2026-10-21",
+  "submitted_head_policy": "Use the actual GitHub commit SHA after upload; never main.",
+  "runtime_evidence": "tests/evidence/verified-runtime-0.7.0.json"
 }

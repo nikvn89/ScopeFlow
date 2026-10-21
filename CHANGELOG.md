@@ -1,13 +1,13 @@
 # Changelog
 
-## 0.7.0 — Milestone v4: Revocable Settlement Offers (runtime pending)
+## 0.7.0 — Milestone v4: Revocable Settlement Offers (runtime verified)
 
 - Timed offers, per-party increasing IDs, cancellation and explicit acceptance of the exact counterparty offer.
 - Same-price replacement invalidates old IDs; scope/escrow pins and exact expiry boundaries are enforced. Publishing via the new API never closes implicitly.
 - Views expose current offer metadata and accepted offer provenance. Legacy matching uses only live offers with a 24-hour default.
 - dApp adds validity selection, offer IDs/status/countdowns, cancellation and ID-bound acceptance; publication/cancellation verify unchanged money.
 - Confirmation uses finalized raw leader normal-return evidence and finalized state reads. Missing or mismatched deployment profiles are rejected before signing.
-- Local SDK, frontend, lint, mutation and existing ledger gates pass. A fresh deployment, source parity and on-chain offer/withdrawal evidence remain pending.
+- Local SDK, frontend, lint, mutation and existing ledger gates pass. The fresh deployment source parity and core on-chain offer/withdrawal path passed on 21 October 2026; both native payouts were finalized and credited.
 
 ## 0.6.0 — Milestone v3: Funded Scope Escrow
 

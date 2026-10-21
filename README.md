@@ -23,7 +23,7 @@ The semantic classification task, escrow, priced extensions, version ledger and 
 - Current source: `contracts/ScopeFlow.py`, class `ScopeGuard`, **no constructor arguments**, contract **0.7.0**.
 - Current source fingerprint and deployment status: [release.json](release.json).
 - New v4 address: [`0x08F49e8929c7c49E2eBA30785661c0eA84b6b104`](https://explorer-studio.genlayer.com/address/0x08F49e8929c7c49E2eBA30785661c0eA84b6b104). Deployed source equals the frozen repository source; finalized registry reports `0.7.0` and `settlement_offers: true` (checked 21 October 2026).
-- **Offer/escrow runtime remains pending.** No project existed at the verification snapshot. The reviewed v3 deployment remains unchanged.
+- **Core v4 runtime verified on 21 October 2026:** offer #1 expired; #2 was cancelled; replacement #3 was explicitly accepted; Client received 0.001 GEN and Contractor received 0.002 GEN through finalized, credited native transfers. Contract balance and both dues ended at zero. See [runtime evidence](tests/evidence/verified-runtime-0.7.0.json). The reviewed v3 deployment remains unchanged.
 
 This source requires a fresh instance. It does not migrate existing projects or balances.
 

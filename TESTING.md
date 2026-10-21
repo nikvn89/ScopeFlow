@@ -50,8 +50,10 @@ python tests/mutation_check.py
 
 The frontend suite uses Node's TypeScript stripping (Node 22.18+ or Node 24). SDK version is v0.2.16, genlayer-test 0.29.2, genvm-linter 0.11.0 and pytest 9.1.1. `requirements-test.txt` and `package-lock.json` pin the tooling.
 
-## New deployment verified; offer runtime remains pending
+## Fresh runtime verified
 
-On 21 October 2026, `npm run verify:deployed -- 0x08F49e8929c7c49E2eBA30785661c0eA84b6b104` passed. Both normalized source hashes equal the fingerprint above. A `LATEST_FINAL` registry read returned `contract_version: "0.7.0"`, `settlement_offers: true` and `project_count: 0`. The deployment transaction hash has not been supplied. No on-chain offer result or wallet payment is claimed. Browser visual verification and wallet signing were not run in this environment. [RUNTIME_TEST.md](RUNTIME_TEST.md) contains the short manual path. For withdrawals, verify the finalized parent, linked native transfer and recipient balance independently of contract counters.
+The new 0.7.0 deployment `0x08F49e8929c7c49E2eBA30785661c0eA84b6b104` has matching source and a finalized deployment receipt. The complete core v4 path passed on Project #1: expiry, cancellation with escrow unchanged, same-price replacement, exact-ID acceptance and both native payments. Client received 0.001 GEN and Contractor received 0.002 GEN; both transfer children finalized and were credited. Wallet increases match those amounts; final escrow, both due balances and contract native balance are zero.
 
-Historical v3 runtime evidence is preserved in [docs/history/TESTING-v0.6.0.md](docs/history/TESTING-v0.6.0.md); its screenshots and transaction hashes are not v4 runtime evidence. `verify:runtime-receipts` uses historical v2 receipt fixtures and does not run fresh v4 writes.
+Full matrix and links: [RUNTIME_TEST.md](RUNTIME_TEST.md). Sanitized source data and historical postconditions: [tests/evidence/verified-runtime-0.7.0.json](tests/evidence/verified-runtime-0.7.0.json). These results are distinct from the local SDK's native-transfer recorder.
+
+Negative runtime writes and fresh semantic model classification were not part of this offer test. Browser/wallet actions were performed by the user; the assistant independently verified RPC state, receipt success, linked native transfers and balances. Historical v3 material remains in [docs/history/TESTING-v0.6.0.md](docs/history/TESTING-v0.6.0.md). `verify:runtime-receipts` uses historical v2 fixtures and is not the new v4 runtime matrix.

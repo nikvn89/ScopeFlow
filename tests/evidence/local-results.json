@@ -35,12 +35,13 @@
   },
   "typescript_and_production_build": "PASS",
   "live_v4_deployment": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
-  "live_v4_runtime": "NOT RUN",
+  "live_v4_runtime": "PASS: timed offer expiry, cancellation, same-price replacement, exact acceptance, both native withdrawals",
   "browser_visual_and_wallet_signing": "NOT RUN",
   "deployment_source_parity": "PASS",
   "finalized_registry": {
     "contract_version": "0.7.0",
     "settlement_offers": true,
     "project_count": 0
-  }
+  },
+  "runtime_evidence": "tests/evidence/verified-runtime-0.7.0.json"
 }

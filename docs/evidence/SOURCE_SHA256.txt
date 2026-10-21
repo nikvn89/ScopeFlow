@@ -3,4 +3,5 @@ contracts/ScopeFlow.py
 SHA256 (CRLF to LF only): 25001c63873668b4fb25bbde32b5f4dc71ba088dea28dcc545ef34d672ce9a8f
 Deployment: 0x08F49e8929c7c49E2eBA30785661c0eA84b6b104
 Deployed source parity and finalized registry: PASS (2026-10-21)
-Offer/escrow runtime: NOT RUN
+Core offer/escrow runtime and native delivery: PASS (2026-10-21)
+Deploy transaction: 0xb528a3ce88844276a25e48fbcd049d040f921f89456d13049700b62031f0d365
