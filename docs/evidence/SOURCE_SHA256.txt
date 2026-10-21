@@ -1,7 +1,9 @@
-ScopeFlow v4 candidate / contract 0.7.0
-contracts/ScopeFlow.py
-SHA256 (CRLF to LF only): 25001c63873668b4fb25bbde32b5f4dc71ba088dea28dcc545ef34d672ce9a8f
-Deployment: 0x08F49e8929c7c49E2eBA30785661c0eA84b6b104
-Deployed source parity and finalized registry: PASS (2026-10-21)
-Core offer/escrow runtime and native delivery: PASS (2026-10-21)
-Deploy transaction: 0xb528a3ce88844276a25e48fbcd049d040f921f89456d13049700b62031f0d365
+ScopeFlow v5 / ScopeGuard 0.8.0
+DEPLOY THIS: deploy/ScopeFlow.py
+Deployment normalized SHA256: 0037942acff3e68b64fc4d9dc9ae04ce19a5574814d713474bb2965a3d702d76
+Readable source: contracts/ScopeFlow.py
+Readable normalized SHA256: 578eaf5e20ae33f9dc0b591ffcad134f848088d2943b49b3f531aa22b8182931
+Normalization: CRLF to LF only; no trim
+Fresh deployment: 0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C
+Source parity: PASS; deployment FINALIZED normal return
+V5 business-flow runtime: NOT RUN

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0 — Milestone v5: Delivery and staged escrow (local candidate)
+
+- Adds a reproducible 47,218-byte Studio deploy artifact after the original source was rejected as Request too large. Exact reverse AST parity, matching SDK suites and request-size guards cover the build; source parity now follows the compact deployment hash.
+- Adds a 20-item milestone board, immutable title/criteria/budget proposals and Contractor acceptance that reserves available escrow. Stale-scope proposals cannot be accepted.
+- Adds up to five append-only delivery reports per item, a separate bounded GenLayer textual review, and immutable per-attempt Client review history. Artifact links are metadata only.
+- Client approval pins the exact latest matching report, allocates the milestone budget once and leaves the project active. Contractor can withdraw in stages. Revision requests block old approvals.
+- Adds append-only allocation receipts with exact amount, attempt and content hashes, scope provenance, payment revision and before/after escrow. Receipts do not claim native delivery.
+- Adds financial-revision pins to final settlement offers and resets close votes after accepted reservations/payments; equal later top-ups cannot revive old consent. Mutual final closure explicitly overrides unfinished milestones.
+- Adds Delivery & payments UI, fixed criteria view, attempt/revision history, reservation/free-escrow totals, receipt ledger and verified poststate messaging. Version/capability checks require a fresh 0.8.0 instance.
+- Preserves older ABI entry points, scope history, priced extensions, timed settlement offers and independent withdrawals.
+- Local SDK, Node, DOM, lint and production build checks pass. Fresh deployment and exact source parity are verified at 0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C. Live delivery verdicts, native payouts and the public production dApp remain pending.
+
 ## 0.7.0 — Milestone v4: Revocable Settlement Offers (runtime verified)
 
 - Timed offers, per-party increasing IDs, cancellation and explicit acceptance of the exact counterparty offer.
