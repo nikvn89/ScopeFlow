@@ -1,5 +1,5 @@
 """
-Mutation matrix for the v0.7.0 escrow and settlement offers in contracts/ScopeFlow.py.
+Mutation matrix for the v0.8.0 escrow and settlement offers in contracts/ScopeFlow.py.
 
 Each mutant is one deliberate fault. The GenVM Direct Mode suite
 (tests/direct/test_escrow_direct.py) runs against every mutant and must fail on
@@ -167,6 +167,26 @@ OFFER_MUTANTS = [
 ]
 
 
+
+DELIVERY_MUTANTS = [
+ ("delivery_no_client_proposal_gate", 'if self._party_role(pk) != "CLIENT":\n            raise gl.vm.UserError("Only client may propose milestones")', 'if False:\n            raise gl.vm.UserError("Only client may propose milestones")', False),
+ ("delivery_no_contractor_accept_gate", 'if self._party_role(pk) != "CONTRACTOR":\n            raise gl.vm.UserError("Only contractor may accept milestones")', 'if False:\n            raise gl.vm.UserError("Only contractor may accept milestones")', False),
+ ("delivery_overcommit", 'if budget > escrow - reserved:', 'if budget > escrow:', False),
+ ("delivery_no_reservation", 'self.project_reserved_wei[pk] = u256(reserved + budget)', 'self.project_reserved_wei[pk] = u256(reserved)', False),
+ ("delivery_no_scope_pin", 'if data["proposed_scope_version"] != int(self.project_versions.get(pk, u256(0))):', 'if False:', False),
+ ("delivery_no_attempt_cap", 'if data["attempt_count"] >= self.MAX_DELIVERY_ATTEMPTS:', 'if False:', False),
+ ("delivery_accepts_extra_model_fields", 'or len(data) != 1 or "decision" not in data:', 'or "decision" not in data:', False),
+ ("delivery_no_exact_attempt", 'data["latest_attempt_id"] != attempt_id', 'False', True),
+ ("delivery_pays_gaps", 'if attempt["decision"] != "DELIVERY_MATCHES":', 'if False:', False),
+ ("delivery_keeps_escrow", 'self.project_escrow_wei[pk] = u256(escrow - budget)', 'self.project_escrow_wei[pk] = u256(escrow)', False),
+ ("delivery_keeps_reservation", 'self.project_reserved_wei[pk] = u256(reserved - budget)', 'self.project_reserved_wei[pk] = u256(reserved)', False),
+ ("delivery_underpays", 'self.project_contractor_due_wei.get(pk, u256(0)) + u256(budget)', 'self.project_contractor_due_wei.get(pk, u256(0))', False),
+ ("delivery_payment_epoch_missing", 'self.project_payment_revisions.get(pk, u256(0)) + u256(1)', 'self.project_payment_revisions.get(pk, u256(0))', False),
+ ("delivery_old_offers_revive", 'or self.settlement_payment_revisions.get(key, u256(0)) != self.project_payment_revisions.get(project_key, u256(0))', 'or False', False),
+ ("delivery_close_votes_survive", 'self.project_contractor_close_vote_versions[pk] = u256(0)', 'pass', False),
+ ("delivery_wrong_receipt_attempt", '"title": data["title"], "attempt_id": attempt_id, "amount_wei": str(budget)', '"title": data["title"], "attempt_id": 0, "amount_wei": str(budget)', False),
+]
+
 def run_suite(contract_path, suite):
     env = dict(os.environ, SCOPEFLOW_CONTRACT=str(contract_path))
     with tempfile.TemporaryDirectory() as td:
@@ -182,20 +202,20 @@ def run_suite(contract_path, suite):
 
 def main():
     source=CONTRACT.read_text()
-    for name,old,new,all_ in MUTANTS+OFFER_MUTANTS:
+    for name,old,new,all_ in MUTANTS+OFFER_MUTANTS+DELIVERY_MUTANTS:
         count=source.count(old)
         if not count or (count>1 and not all_): raise RuntimeError(f'Invalid anchor {name}: {count}')
     if not run_suite(CONTRACT,ROOT/'tests/direct'): raise RuntimeError('Baseline fails')
     survivors=[]
     with tempfile.TemporaryDirectory() as tmp:
-        for name,old,new,all_ in MUTANTS+OFFER_MUTANTS:
+        for name,old,new,all_ in MUTANTS+OFFER_MUTANTS+DELIVERY_MUTANTS:
             path=Path(tmp)/'ScopeFlow.py'
             path.write_text(source.replace(old,new) if all_ else source.replace(old,new,1))
-            suite=ROOT/'tests/direct/test_settlement_offers.py' if name in {m[0] for m in OFFER_MUTANTS} else SUITE
+            suite=ROOT/'tests/direct/test_delivery.py' if name in {m[0] for m in DELIVERY_MUTANTS} else ROOT/'tests/direct/test_settlement_offers.py' if name in {m[0] for m in OFFER_MUTANTS} else SUITE
             passed=run_suite(path,suite)
             print(('SURVIVED' if passed else 'killed')+' '+name,flush=True)
             if passed:survivors.append(name)
-    print(f'{len(MUTANTS)+len(OFFER_MUTANTS)-len(survivors)}/{len(MUTANTS)+len(OFFER_MUTANTS)} mutants killed',flush=True)
+    print(f'{len(MUTANTS)+len(OFFER_MUTANTS)+len(DELIVERY_MUTANTS)-len(survivors)}/{len(MUTANTS)+len(OFFER_MUTANTS)+len(DELIVERY_MUTANTS)} mutants killed',flush=True)
     return 1 if survivors else 0
 
 if __name__ == '__main__':sys.exit(main())

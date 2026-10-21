@@ -1,4 +1,4 @@
-// Escrow amounts and actions for ScopeFlow v0.7.0.
+// Escrow amounts and actions for ScopeFlow v0.8.0.
 // The contract returns every wei amount as a decimal string; nothing here
 // passes a token amount through a JavaScript number.
 
@@ -97,7 +97,7 @@ export function escrowActions(project: EscrowFields, role: Role): EscrowActions 
   const open = project.status === 'ACTIVE' || project.status === 'PENDING_CONTRACTOR_ACCEPTANCE'
   let note = ''
   if (project.refund_pending_expiry) note = 'The acceptance window has passed. Record the expiry to release the refund to the client.'
-  else if (project.status === 'ACTIVE') note = 'Held in the contract until both parties close the project or agree a split.'
+  else if (project.status === 'ACTIVE') note = 'Accepted milestone budgets are reserved. Approving a matching delivery allocates its budget; both parties can also close or agree a final split.'
   else if (project.status === 'PENDING_CONTRACTOR_ACCEPTANCE') note = 'Refunded to the client if the contractor declines, the window expires, or the client cancels.'
   else if (project.settled) note = 'The escrow has been allocated. Each party withdraws its own share.'
   else note = 'The escrow went back to the client.'

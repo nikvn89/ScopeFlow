@@ -12,10 +12,11 @@ const read=async(functionName,args=[])=>{
  return typeof raw==='string'?JSON.parse(raw):raw
 }
 const registry=await read('get_registry')
-if(registry.contract_version!=='0.7.0'||!registry.settlement_offers)throw Error('Not the fresh 0.7.0 deployment')
+if(registry.contract_version!=='0.8.0'||!registry.settlement_offers||!registry.milestone_delivery)throw Error('Not the fresh 0.8.0 deployment')
 const p=await read('get_project',[Number(id)])
-const projectKeys=['project_id','client','contractor','status','active_scope_version','chain_timestamp','escrow_wei','contractor_due_wei','client_due_wei','contractor_paid_wei','client_refunded_wei','client_settlement','contractor_settlement','settled','settled_offer_id','settled_offer_role']
+const projectKeys=['project_id','client','contractor','status','active_scope_version','chain_timestamp','escrow_wei','contractor_due_wei','client_due_wei','contractor_paid_wei','client_refunded_wei','client_settlement','contractor_settlement','settled','settled_offer_id','settled_offer_role','reserved_wei','available_wei','payment_revision','milestone_count','payment_receipt_count']
 console.log(JSON.stringify({address,registry,project:Object.fromEntries(projectKeys.map(k=>[k,p[k]]))},null,2))
+console.log(JSON.stringify({milestones:await read('get_milestones',[Number(id),1,20]),payment_receipts:await read('get_payment_receipts',[Number(id),1,20])},null,2))
 if(hash){
  const tx=await client.request({method:'eth_getTransactionByHash',params:[hash]})
  console.log(JSON.stringify({hash,status:tx?.status,from:tx?.from_address??tx?.from,to:tx?.to_address??tx?.to,value:tx?.value,execution:readExplicitExecutionResult(tx??{})},null,2))

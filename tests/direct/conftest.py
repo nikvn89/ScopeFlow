@@ -1,4 +1,4 @@
-"""Shared helpers for the GenVM Direct Mode suite (contracts/ScopeFlow.py, v0.7.0)."""
+"""Shared helpers for the GenVM Direct Mode suite (contracts/ScopeFlow.py, v0.8.0)."""
 
 import datetime as dt
 import json

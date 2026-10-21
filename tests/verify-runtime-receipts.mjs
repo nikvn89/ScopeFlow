@@ -1,10 +1,12 @@
-// Historical v2 receipt fixtures only; not v4 runtime evidence.
+// Historical v2 receipt fixtures only; not v5 runtime evidence.
 import assert from 'node:assert/strict'
 
 import { createClient } from 'genlayer-js'
 import { studionet } from 'genlayer-js/chains'
 
 import { readExplicitExecutionResult } from '../src/lib/transactionExecution.ts'
+
+console.log('Historical v2 receipt checks only; these are not v5 runtime evidence.')
 
 const cases = [
   {

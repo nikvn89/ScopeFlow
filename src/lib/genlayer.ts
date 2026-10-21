@@ -14,6 +14,9 @@ export type RegistryState = {
   default_acceptance_window_seconds?: number
   min_acceptance_window_seconds?: number
   max_acceptance_window_seconds?: number
+  milestone_delivery?: boolean
+  staged_payments?: boolean
+  payment_receipts?: boolean
   settlement_offers?: boolean
   funded_escrow?: boolean
   max_escrow_wei?: string
@@ -57,7 +60,12 @@ export type ScopeProject = {
     | 'CLOSED'
     | string
   created_at: number
-  // v0.6.0 escrow (wei as decimal strings)
+  reserved_wei?: string
+  available_wei?: string
+  payment_revision?: number
+  milestone_count?: number
+  payment_receipt_count?: number
+  // Escrow amounts use decimal wei strings.
   escrow_wei?: string
   contractor_due_wei?: string
   client_due_wei?: string
@@ -246,7 +254,7 @@ export async function ensureStudioNet(): Promise<void> {
 }
 
 export async function readRegistry(): Promise<RegistryState> {
-  if (!/^0x[0-9a-fA-F]{40}$/.test(CONTRACT_ADDRESS)) throw new Error('Configure the new ScopeFlow 0.7.0 deployment address and redeploy.')
+  if (!/^0x[0-9a-fA-F]{40}$/.test(CONTRACT_ADDRESS)) throw new Error('Configure the new ScopeFlow 0.8.0 deployment address and redeploy.')
   const result = await readClient.readContract({
     transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
     address: CONTRACT_ADDRESS,
@@ -358,7 +366,7 @@ async function submitWrite(
   const provider = requireProvider()
 
   const registry = await readRegistry()
-  if (registry.contract_version !== '0.7.0' || !registry.settlement_offers) throw new Error('This dApp requires the new ScopeFlow 0.7.0 deployment.')
+  if (registry.contract_version !== '0.8.0' || !registry.settlement_offers || !registry.milestone_delivery || !registry.staged_payments || !registry.payment_receipts) throw new Error('This dApp requires the new ScopeFlow 0.8.0 deployment.')
   await ensureStudioNet()
   const selected = await provider.request({ method: 'eth_accounts' }) as string[]
   if (!selected[0] || selected[0].toLowerCase() !== account.toLowerCase()) throw new Error('Wallet account changed. Reconnect before signing.')
@@ -580,4 +588,29 @@ export function cancelSettlementOffer(account: `0x${string}`, projectId: number,
 }
 export function acceptSettlementOffer(account: `0x${string}`, projectId: number, offerId: string) {
   return submitWrite(account, 'accept_settlement_offer', [projectId, BigInt(offerId)])
+}
+
+// v0.8 delivery reads use finalized state, exactly as the existing scope ledger.
+export async function readMilestones(projectId: number) {
+  const result = await readClient.readContract({transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
+    address: CONTRACT_ADDRESS, functionName: 'get_milestones', args: [projectId, 1, 20]})
+  return parseJsonResult<{total: number; items: import('./delivery').Milestone[]}>(result)
+}
+export async function readMilestone(projectId: number, milestoneId: number) {
+  const result = await readClient.readContract({transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
+    address: CONTRACT_ADDRESS, functionName: 'get_milestone', args: [projectId, milestoneId]})
+  return parseJsonResult<import('./delivery').Milestone>(result)
+}
+export async function readDeliveryAttempts(projectId: number, milestoneId: number) {
+  const result = await readClient.readContract({transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
+    address: CONTRACT_ADDRESS, functionName: 'get_delivery_attempts', args: [projectId, milestoneId, 1, 5]})
+  return parseJsonResult<{total: number; items: {submission: import('./delivery').DeliveryAttempt; review: import('./delivery').DeliveryReview | null}[]}>(result)
+}
+export async function readPaymentReceipts(projectId: number) {
+  const result = await readClient.readContract({transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
+    address: CONTRACT_ADDRESS, functionName: 'get_payment_receipts', args: [projectId, 1, 20]})
+  return parseJsonResult<{total: number; items: import('./delivery').PaymentReceipt[]}>(result)
+}
+export function deliveryWrite(account: `0x${string}`, method: 'propose_milestone' | 'cancel_milestone' | 'accept_milestone' | 'submit_delivery' | 'request_delivery_revision' | 'approve_delivery', args: Array<string | number | bigint>) {
+  return submitWrite(account, method, args)
 }

@@ -7,7 +7,7 @@ import { studionet } from 'genlayer-js/chains'
 const address = process.argv[2] ?? process.env.VITE_CONTRACT_ADDRESS ?? ''
 const release = JSON.parse(await readFile(new URL('../release.json',import.meta.url),'utf8'))
 const expectedSha = release.normalized_sha256
-if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error('Pass the fresh ScopeFlow 0.7.0 address.')
+if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error('Pass the fresh ScopeFlow 0.8.0 address.')
 
 function normalizeSource(source) {
   return source.replaceAll('\r\n', '\n')
@@ -20,7 +20,7 @@ function sha256(source) {
 const client = createClient({ chain: studionet })
 const [deployedSource, localSource] = await Promise.all([
   client.getContractCode(address),
-  readFile(new URL('../contracts/ScopeFlow.py', import.meta.url), 'utf8'),
+  readFile(new URL('../'+release.contract_file, import.meta.url), 'utf8'),
 ])
 
 const normalizedDeployed = normalizeSource(deployedSource)
@@ -33,7 +33,7 @@ console.log(`Deployed normalized SHA256: ${deployedSha}`)
 console.log(`Repository normalized SHA256: ${localSha}`)
 
 if (deployedSha !== expectedSha || localSha !== expectedSha) {
-  throw new Error('Source hash does not match the v0.7.0 source.')
+  throw new Error('Source hash does not match the v0.8.0 source.')
 }
 
 if (normalizedDeployed !== normalizedLocal) {

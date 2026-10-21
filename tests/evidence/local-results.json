@@ -1,16 +1,36 @@
 {
   "date": "2026-10-21",
-  "contract_version": "0.7.0",
-  "source_sha256": "25001c63873668b4fb25bbde32b5f4dc71ba088dea28dcc545ef34d672ce9a8f",
+  "milestone": "v5",
+  "contract_version": "0.8.0",
+  "source_sha256": "0037942acff3e68b64fc4d9dc9ae04ce19a5574814d713474bb2965a3d702d76",
   "sdk_direct": {
-    "passed": 71,
+    "passed": 129,
     "failed": 0,
-    "model": "controlled responses",
-    "native_transfer": "recorder, not network delivery"
+    "errors": 0,
+    "model": "Controlled responses, not live-model accuracy",
+    "native_transfer": "Recipient/amount recorder, not network delivery"
   },
   "frontend_unit": {
-    "passed": 19,
+    "passed": 29,
     "failed": 0
+  },
+  "dom_integration": {
+    "kind": "DOM integration with jsdom and controlled RPC fixtures",
+    "limitations": "Not browser layout, wallet signing, or live consensus verification",
+    "passed": 11,
+    "cases": [
+      "empty board and available escrow are displayed",
+      "invalid decimal cannot submit and input remains editable",
+      "propose uses exact wei and clears fields only after verification",
+      "contractor acceptance verifies and updates reservation",
+      "semantic submission keeps funds held and renders report",
+      "revision locks old approval and preserves review",
+      "approval pins displayed attempt and verifies immutable receipt",
+      "contract revert never becomes a success notice",
+      "pending receipt never clears form or claims success",
+      "successful execution with wrong money poststate is inconclusive",
+      "read failure hides stale work and disables writes"
+    ]
   },
   "genvm_lint": {
     "checks": 3,
@@ -22,26 +42,82 @@
   "production_stub_checks": {
     "passed": 99
   },
-  "ledger_model_property_sweep": {
+  "legacy_ledger_model_property_sweep": {
     "traces": 5000,
     "transitions": 80313,
-    "invariant_failures": 0
+    "invariant_failures": 0,
+    "scope": "Legacy scope ledger, not new staged-payment state"
+  },
+  "staged_payment_seeded_sdk_scenarios": {
+    "seeds": 8,
+    "included_in_sdk_case_count": true
   },
   "mutation": {
-    "killed": 52,
-    "total": 52,
+    "killed": 68,
+    "total": 68,
+    "legacy": 52,
+    "delivery": 16,
     "excluded_equivalent_old_pin_mutants": 2,
     "infrastructure_errors_count_as_kills": false
   },
-  "typescript_and_production_build": "PASS",
-  "live_v4_deployment": "0x08F49e8929c7c49E2eBA30785661c0eA84b6b104",
-  "live_v4_runtime": "PASS: timed offer expiry, cancellation, same-price replacement, exact acceptance, both native withdrawals",
-  "browser_visual_and_wallet_signing": "NOT RUN",
-  "deployment_source_parity": "PASS",
-  "finalized_registry": {
-    "contract_version": "0.7.0",
-    "settlement_offers": true,
-    "project_count": 0
+  "abi_regression": {
+    "old_public_methods_preserved": 25,
+    "new_public_methods": 10
   },
-  "runtime_evidence": "tests/evidence/verified-runtime-0.7.0.json"
+  "typescript_and_production_build": "PASS",
+  "production_modules": 482,
+  "live_v5_deployment": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+  "live_v5_runtime": "NOT RUN",
+  "browser_visual_and_wallet_signing": "NOT RUN",
+  "historical_v4_evidence": "tests/evidence/verified-runtime-0.7.0.json",
+  "limitations": [
+    "SDK model outputs are controlled fixtures",
+    "DOM scenarios use jsdom and controlled RPC responses",
+    "Deployment consensus and source parity verified; no v5 business-flow/native payout, production dApp deployment or review approval claimed"
+  ],
+  "readable_source_sha256": "578eaf5e20ae33f9dc0b591ffcad134f848088d2943b49b3f531aa22b8182931",
+  "compact_sdk_direct": {
+    "passed": 129,
+    "failed": 0,
+    "errors": 0,
+    "same_suite_as_readable": true
+  },
+  "compact_deployment": {
+    "strategy": "AST-reversible internal identifier and whitespace compaction",
+    "readable_source_bytes": 100784,
+    "deploy_source_bytes": 47218,
+    "request_budget_bytes": 100000,
+    "byte_budget_policy": "Conservative SDK request regression guard; not a claim about the live RPC maximum",
+    "ast_reverse_parity": "PASS",
+    "sdk_request_bytes": {
+      "v5": 95135,
+      "v6": 95199
+    },
+    "remote_read_only_schema": "PASS",
+    "public_method_signatures_verified": 35,
+    "constructor_arguments": 0,
+    "signed_deployment": "FINALIZED_SOURCE_PARITY_VERIFIED"
+  },
+  "deployment_source_parity": "PASS",
+  "deployment_execution": "FINALIZED / FINISHED_WITH_RETURN",
+  "finalized_registry": {
+    "project_count": 0,
+    "contract_version": "0.8.0",
+    "scope_version_ledger": true,
+    "lifecycle_finality": true,
+    "funded_escrow": true,
+    "settlement_offers": true,
+    "milestone_delivery": true,
+    "staged_payments": true,
+    "payment_receipts": true,
+    "max_milestones": 20,
+    "max_delivery_attempts": 5,
+    "min_settlement_window_seconds": 60,
+    "max_settlement_window_seconds": 604800,
+    "default_settlement_window_seconds": 86400,
+    "max_escrow_wei": "1000000000000000000000000000",
+    "default_acceptance_window_seconds": 604800,
+    "min_acceptance_window_seconds": 300,
+    "max_acceptance_window_seconds": 2592000
+  }
 }

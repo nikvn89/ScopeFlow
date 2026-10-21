@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import DeliveryBoard from './components/DeliveryBoard'
 import {
   acceptProject,
   approveClose,
@@ -54,7 +55,7 @@ import {
   wei,
 } from './lib/escrow'
 
-type WorkspaceTab = 'project' | 'requests' | 'history'
+type WorkspaceTab = 'project' | 'requests' | 'history' | 'delivery'
 type Role = 'CLIENT' | 'CONTRACTOR' | 'OBSERVER'
 type Notice = {
   kind: 'success' | 'error' | 'warning' | 'info'
@@ -436,6 +437,7 @@ function EscrowPanel({
           <p>
             Publish a time-limited offer for the Contractor&apos;s share. The other party must accept the exact offer before it expires. Cancelling an offer leaves the escrow held.
           </p>
+          {wei(project.reserved_wei) > 0n && <p className="delivery-warning">Final settlement includes {formatGen(wei(project.reserved_wei))} reserved for unfinished milestones. Agreement closes that work and splits all remaining escrow; already allocated dues remain withdrawable.</p>}
           <div className="approval-grid">
             <div className={settlement.mine ? 'approval approved' : 'approval'}>
               <span>Your latest offer</span>
@@ -1238,7 +1240,7 @@ export default function App() {
           <img src="/scopeflow-logo.svg" alt="ScopeFlow logo" />
           <span>
             <strong>ScopeFlow</strong>
-            <small>GenLayer project</small>
+            <small>Scope · Delivery · Payments</small>
           </span>
         </button>
 
@@ -1260,6 +1262,7 @@ export default function App() {
                 <span className="nav-icon">▣</span>
                 Project scope
               </button>
+              <button className={workspaceTab === 'delivery' ? 'sidebar-link active' : 'sidebar-link'} onClick={() => setWorkspaceTab('delivery')}><span className="nav-icon">✓</span>Delivery & payments</button>
               <button
                 className={workspaceTab === 'requests' ? 'sidebar-link active' : 'sidebar-link'}
                 onClick={() => setWorkspaceTab('requests')}
@@ -1326,8 +1329,8 @@ export default function App() {
         </header>
 
         <main className="content">
-        {(!CONTRACT_ADDRESS || (registry && (registry.contract_version !== '0.7.0' || !registry.settlement_offers))) && (
-          <div className="notice notice-warning" role="status">This deployment is not ready for settlement offers. Configure the new ScopeFlow 0.7.0 address and redeploy before signing.</div>
+        {(!CONTRACT_ADDRESS || (registry && (registry.contract_version !== '0.8.0' || !registry.settlement_offers || !registry.milestone_delivery))) && (
+          <div className="notice notice-warning" role="status">This deployment is not ready for milestone delivery. Configure the new ScopeFlow 0.8.0 address and redeploy before signing.</div>
         )}
         {!project ? (
           <>
@@ -1335,13 +1338,13 @@ export default function App() {
               <div className="hero-copy">
                 <div className="hero-brandline">
                   <img src="/scopeflow-logo.svg" alt="ScopeFlow logo" />
-                  <span>ScopeFlow · Consensus-governed scope</span>
+                  <span>ScopeFlow V5 · From agreement to delivery</span>
                 </div>
-                <h1>Keep project scope clear as the work evolves.</h1>
+                <h1>Agree the scope. Deliver the work. Get paid in stages.</h1>
                 <p>
-                  Lock the agreed scope, submit change requests, and let GenLayer classify
-                  whether each request is covered. Deterministic deadlines, decline, expiry,
-                  and version-pinned mutual close keep every project lifecycle finite.
+                  Agree scope and milestone budgets with two wallets. Let GenLayer review
+                  change requests and delivery reports, then approve exact submissions to
+                  release their budgets while work continues.
                 </p>
                 <div className="hero-actions">
                   <a className="button button-hero" href="#create-project">Create a project</a>
@@ -1442,7 +1445,7 @@ export default function App() {
                     placeholder="0"
                   />
                   <small className="field-note">
-                    Held by the contract. Paid to the Contractor on mutual close, refunded if the
+                    Held by the contract for accepted milestones or final closure, refunded if the
                     project is cancelled, declined or expires. You can add more later.
                   </small>
                 </label>
@@ -1611,6 +1614,7 @@ export default function App() {
             </section>
 
             <nav className="tabs" aria-label="ScopeFlow project sections">
+              <button className={workspaceTab === 'delivery' ? 'tab active' : 'tab'} onClick={() => setWorkspaceTab('delivery')}>Delivery & payments <span className="tab-count">{project.milestone_count ?? 0}</span></button>
               <button
                 className={workspaceTab === 'project' ? 'tab active' : 'tab'}
                 onClick={() => setWorkspaceTab('project')}
@@ -1720,6 +1724,8 @@ export default function App() {
               </div>
             )}
 
+            {workspaceTab === 'delivery' && <DeliveryBoard key={project.project_id} project={project} role={role} account={account} busy={busy} onBusy={setBusy} onNotice={setNotice} onRefresh={() => openProject(project.project_id, pageStart)} />}
+
             {workspaceTab === 'project' && (
               <div className="project-layout">
                 <section className="panel scope-panel">
@@ -1827,7 +1833,8 @@ export default function App() {
                       <span className="eyebrow">MUTUAL CLOSE · SCOPE V{project.active_scope_version}</span>
                       <p>
                         Both parties must approve closure against this exact scope version.
-                        Any later approved extension makes older close votes stale.
+                        Closure allocates all remaining escrow to the Contractor, including unfinished milestone budgets.
+                        A later extension, accepted milestone or milestone payment clears older consent.
                       </p>
                       <div className="approval-grid">
                         <div className={project.client_close_approved ? 'approval approved' : 'approval'}>

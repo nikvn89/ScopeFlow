@@ -201,7 +201,7 @@ contract = fresh_contract()
 
 # Config and preserved default create path.
 registry = json.loads(contract.get_registry())
-check(registry["contract_version"] == "0.7.0", "registry exposes candidate version")
+check(registry["contract_version"] == "0.8.0", "registry exposes candidate version")
 check(registry["lifecycle_finality"] is True, "registry advertises lifecycle finality")
 check(registry["default_acceptance_window_seconds"] == 604800, "default window is seven days")
 check(registry["min_acceptance_window_seconds"] == 300, "minimum window is five minutes")
