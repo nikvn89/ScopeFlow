@@ -1,5 +1,5 @@
 """
-Mutation matrix for the v0.6.0 escrow in contracts/ScopeFlow.py.
+Mutation matrix for the v0.7.0 escrow and settlement offers in contracts/ScopeFlow.py.
 
 Each mutant is one deliberate fault. The GenVM Direct Mode suite
 (tests/direct/test_escrow_direct.py) runs against every mutant and must fail on
@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -143,38 +144,58 @@ MUTANTS = [
 ]
 
 
-def run_suite(contract_path: Path) -> bool:
+# The two old pin mutants are now equivalent: _settlement_open independently
+# enforces both pins. Exclude them rather than report them as killed.
+MUTANTS = [m for m in MUTANTS if m[0] not in {"settlement_ignores_escrow_pin", "settlement_ignores_version_pin"}]
+MUTANTS = [(name, old.replace('\n\n        self._wei_in_range(contractor_share_wei', '\n\n        if validity_seconds < self.MIN_SETTLEMENT_WINDOW_SECONDS or validity_seconds > self.MAX_SETTLEMENT_WINDOW_SECONDS:\n            raise gl.vm.UserError("Settlement validity is out of range")\n\n        self._wei_in_range(contractor_share_wei') if name == "settlement_before_acceptance" else old, new, all_) for name,old,new,all_ in MUTANTS]
+
+OFFER_MUTANTS = [
+ ("offer_no_min_window", 'validity_seconds < self.MIN_SETTLEMENT_WINDOW_SECONDS or validity_seconds > self.MAX_SETTLEMENT_WINDOW_SECONDS', 'validity_seconds > self.MAX_SETTLEMENT_WINDOW_SECONDS', False),
+ ("offer_no_max_window", 'validity_seconds < self.MIN_SETTLEMENT_WINDOW_SECONDS or validity_seconds > self.MAX_SETTLEMENT_WINDOW_SECONDS', 'validity_seconds < self.MIN_SETTLEMENT_WINDOW_SECONDS', False),
+ ("offer_expiry_inclusive", 'elif self._chain_unix() >= expires_at:', 'elif self._chain_unix() > expires_at:', False),
+ ("offer_ignores_expiry", 'elif self._chain_unix() >= expires_at:', 'elif False:', False),
+ ("offer_ignores_cancellation", 'elif bool(self.settlement_offer_cancelled.get(key, False)):', 'elif False:', False),
+ ("offer_cancel_no_effect", 'self.settlement_offer_cancelled[key] = True', 'self.settlement_offer_cancelled[key] = False', False),
+ ("offer_nonce_not_incremented", 'self.settlement_offer_ids.get(key, u256(0)) + u256(1)', 'u256(1)', False),
+ ("offer_no_exact_id", 'if offer_id <= 0 or int(self.settlement_offer_ids.get(key, u256(0))) != offer_id:', 'if False:', True),
+ ("offer_accepts_own_offer", 'other = "CONTRACTOR" if role == "CLIENT" else "CLIENT"', 'other = role', True),
+ ("offer_no_open_gate", 'if not self._settlement_open(project_key, other):', 'if False:', False),
+ ("offer_publication_matches", 'contractor_share_wei, validity_seconds, False)', 'contractor_share_wei, validity_seconds, True)', False),
+ ("offer_wrong_accepted_id", 'self.project_settled_offer_ids[project_key] = u256(offer_id)', 'self.project_settled_offer_ids[project_key] = u256(0)', False),
+ ("offer_wrong_proposer", 'self.project_settled_offer_roles[project_key] = other', 'self.project_settled_offer_roles[project_key] = role', True),
+ ("offer_wrong_accept_split", 'share = u256(int(offer["contractor_share_wei"]))', 'share = u256(0)', False),
+]
+
+
+def run_suite(contract_path, suite):
     env = dict(os.environ, SCOPEFLOW_CONTRACT=str(contract_path))
-    result = subprocess.run(
-        [sys.executable, "-m", "pytest", str(SUITE), "-q", "-x", "-p", "no:cacheprovider"],
-        cwd=ROOT, env=env, capture_output=True, text=True,
-    )
-    return result.returncode == 0
+    with tempfile.TemporaryDirectory() as td:
+        report = Path(td) / 'result.xml'
+        result = subprocess.run([sys.executable, '-m', 'pytest', str(suite), '-q', '-x', '-p', 'no:cacheprovider', '--junitxml='+str(report)], cwd=ROOT, env=env, capture_output=True, text=True)
+        if not report.exists(): raise RuntimeError('No test report; cannot classify mutant')
+        tree=ET.parse(report)
+        suites=list(tree.getroot().iter('testsuite'))
+        if result.returncode not in (0,1) or sum(int(t.get('errors','0')) for t in suites) or not sum(int(t.get('tests','0')) for t in suites):
+            raise RuntimeError('Test infrastructure/collection error, not a killed mutant: '+result.stdout[-1500:]+result.stderr[-500:])
+        return result.returncode == 0
 
 
-def main() -> int:
-    source = CONTRACT.read_text()
-    if not run_suite(CONTRACT):
-        print("baseline suite fails; fix it before running mutants")
-        return 1
-    survivors = []
+def main():
+    source=CONTRACT.read_text()
+    for name,old,new,all_ in MUTANTS+OFFER_MUTANTS:
+        count=source.count(old)
+        if not count or (count>1 and not all_): raise RuntimeError(f'Invalid anchor {name}: {count}')
+    if not run_suite(CONTRACT,ROOT/'tests/direct'): raise RuntimeError('Baseline fails')
+    survivors=[]
     with tempfile.TemporaryDirectory() as tmp:
-        for name, old, new, replace_all in MUTANTS:
-            count = source.count(old)
-            if count == 0 or (count > 1 and not replace_all):
-                print(f"anchor problem in {name}: found {count} times")
-                return 1
-            mutated = source.replace(old, new) if replace_all else source.replace(old, new, 1)
-            path = Path(tmp) / "ScopeFlow.py"
-            path.write_text(mutated)
-            passed = run_suite(path)
-            print(f"{'SURVIVED' if passed else 'killed  '}  {name}")
-            if passed:
-                survivors.append(name)
-    killed = len(MUTANTS) - len(survivors)
-    print(f"\n{killed}/{len(MUTANTS)} mutants killed")
+        for name,old,new,all_ in MUTANTS+OFFER_MUTANTS:
+            path=Path(tmp)/'ScopeFlow.py'
+            path.write_text(source.replace(old,new) if all_ else source.replace(old,new,1))
+            suite=ROOT/'tests/direct/test_settlement_offers.py' if name in {m[0] for m in OFFER_MUTANTS} else SUITE
+            passed=run_suite(path,suite)
+            print(('SURVIVED' if passed else 'killed')+' '+name,flush=True)
+            if passed:survivors.append(name)
+    print(f'{len(MUTANTS)+len(OFFER_MUTANTS)-len(survivors)}/{len(MUTANTS)+len(OFFER_MUTANTS)} mutants killed',flush=True)
     return 1 if survivors else 0
 
-
-if __name__ == "__main__":
-    sys.exit(main())
+if __name__ == '__main__':sys.exit(main())

@@ -808,3 +808,6 @@ input:focus, textarea:focus {
 .price-field span { font-size:12px; font-weight:700; }
 .price-field input { padding:10px 12px; }
 @media (max-width: 520px) { .escrow-grid { grid-template-columns:1fr; } .inline-form { flex-direction:column; } }
+
+.offer-validity { display: grid; gap: 8px; margin: 12px 0; }
+.offer-validity select { padding: 10px; max-width: 100%; }

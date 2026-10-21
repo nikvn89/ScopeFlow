@@ -1,4 +1,4 @@
-# v0.6.0
+# v0.7.0
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 from genlayer import *
@@ -13,7 +13,7 @@ EVAL_INVALID = "EVAL_INVALID"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 APPROVED_SEPARATOR = "\n<<<SCOPEGUARD_APPROVED_EXTENSION>>>\n"
 
-CONTRACT_VERSION = "0.6.0"
+CONTRACT_VERSION = "0.7.0"
 
 # Upper bound for any single escrow amount, extension price or deposit (wei).
 MAX_ESCROW_WEI = 10**27
@@ -54,6 +54,17 @@ class ScopeGuard(gl.Contract):
     DEFAULT_ACCEPTANCE_WINDOW_SECONDS = 604800
     MIN_ACCEPTANCE_WINDOW_SECONDS = 300
     MAX_ACCEPTANCE_WINDOW_SECONDS = 2592000
+
+    MIN_SETTLEMENT_WINDOW_SECONDS = 60
+    MAX_SETTLEMENT_WINDOW_SECONDS = 604800
+    DEFAULT_SETTLEMENT_WINDOW_SECONDS = 86400
+
+    settlement_offer_ids: TreeMap[str, u256]
+    settlement_offer_created_at: TreeMap[str, u256]
+    settlement_offer_expires_at: TreeMap[str, u256]
+    settlement_offer_cancelled: TreeMap[str, bool]
+    project_settled_offer_ids: TreeMap[u256, u256]
+    project_settled_offer_roles: TreeMap[u256, str]
 
     project_counter: u256
 
@@ -536,11 +547,30 @@ or
             share = self.project_contractor_settlement_share.get(project_key, u256(0))
             version = self.project_contractor_settlement_version.get(project_key, u256(0))
             escrow = self.project_contractor_settlement_escrow.get(project_key, u256(0))
+        key = str(int(project_key)) + ":" + role
+        expires_at = int(self.settlement_offer_expires_at.get(key, u256(0)))
+        status = "OPEN"
+        if bool(self.project_closed.get(project_key, False)):
+            status = "PROJECT_CLOSED"
+        elif bool(self.settlement_offer_cancelled.get(key, False)):
+            status = "CANCELLED"
+        elif version != self.project_versions.get(project_key, u256(0)) or escrow != self.project_escrow_wei.get(project_key, u256(0)):
+            status = "STALE"
+        elif self._chain_unix() >= expires_at:
+            status = "EXPIRED"
         return {
             "contractor_share_wei": str(int(share)),
             "scope_version": int(version),
             "escrow_wei": str(int(escrow)),
+            "offer_id": str(int(self.settlement_offer_ids.get(key, u256(0)))),
+            "created_at": int(self.settlement_offer_created_at.get(key, u256(0))),
+            "expires_at": expires_at,
+            "status": status,
         }
+
+    def _settlement_open(self, project_key: u256, role: str) -> bool:
+        offer = self._settlement_json(project_key, role)
+        return offer is not None and offer["status"] == "OPEN"
 
     # ----------------------------------------------------------------
     # Derived request status
@@ -1525,10 +1555,55 @@ or
         self._add_escrow(project_key, gl.message.value)
 
     @gl.public.write
-    def propose_settlement(
+    def propose_settlement(self, project_id: int, contractor_share_wei: int) -> None:
+        # Compatibility API: match only live offers, with a default 24-hour window.
+        self._propose_settlement(project_id, contractor_share_wei, self.DEFAULT_SETTLEMENT_WINDOW_SECONDS, True)
+
+    @gl.public.write
+    def propose_settlement_with_window(self, project_id: int, contractor_share_wei: int, validity_seconds: int) -> None:
+        # Publishing an offer never accepts another party's offer.
+        self._propose_settlement(project_id, contractor_share_wei, validity_seconds, False)
+
+    @gl.public.write
+    def cancel_settlement_offer(self, project_id: int, offer_id: int) -> None:
+        project_key = self._project_key(project_id)
+        role = self._party_role(project_key)
+        key = str(project_id) + ":" + role
+        if offer_id <= 0 or int(self.settlement_offer_ids.get(key, u256(0))) != offer_id:
+            raise gl.vm.UserError("Settlement offer changed")
+        if not self._settlement_open(project_key, role):
+            raise gl.vm.UserError("Settlement offer is not open")
+        self.settlement_offer_cancelled[key] = True
+
+    @gl.public.write
+    def accept_settlement_offer(self, project_id: int, offer_id: int) -> None:
+        project_key = self._project_key(project_id)
+        role = self._party_role(project_key)
+        if bool(self.project_closed.get(project_key, False)):
+            raise gl.vm.UserError("Project already closed")
+        if not bool(self.project_accepted.get(project_key, False)):
+            raise gl.vm.UserError("Project is not active")
+        other = "CONTRACTOR" if role == "CLIENT" else "CLIENT"
+        key = str(project_id) + ":" + other
+        if offer_id <= 0 or int(self.settlement_offer_ids.get(key, u256(0))) != offer_id:
+            raise gl.vm.UserError("Settlement offer changed")
+        if not self._settlement_open(project_key, other):
+            raise gl.vm.UserError("Settlement offer is not open")
+        offer = self._settlement_json(project_key, other)
+        share = u256(int(offer["contractor_share_wei"]))
+        self.project_closed[project_key] = True
+        self.project_closed_at[project_key] = u256(self._chain_unix())
+        self.project_closed_versions[project_key] = self.project_versions.get(project_key, u256(0))
+        self.project_settled_offer_ids[project_key] = u256(offer_id)
+        self.project_settled_offer_roles[project_key] = other
+        self._release_escrow(project_key, share)
+
+    def _propose_settlement(
         self,
         project_id: int,
         contractor_share_wei: int,
+        validity_seconds: int,
+        match_existing: bool,
     ) -> None:
         project_key = self._project_key(project_id)
         role = self._party_role(project_key)
@@ -1537,6 +1612,9 @@ or
             raise gl.vm.UserError("Project already closed")
         if not bool(self.project_accepted.get(project_key, False)):
             raise gl.vm.UserError("Project is not active")
+
+        if validity_seconds < self.MIN_SETTLEMENT_WINDOW_SECONDS or validity_seconds > self.MAX_SETTLEMENT_WINDOW_SECONDS:
+            raise gl.vm.UserError("Settlement validity is out of range")
 
         self._wei_in_range(contractor_share_wei, "Settlement share is out of range")
         share = u256(contractor_share_wei)
@@ -1548,7 +1626,7 @@ or
 
         if role == "CLIENT":
             if (
-                bool(self.project_client_settlement_set.get(project_key, False))
+                match_existing and self._settlement_open(project_key, "CLIENT")
                 and self.project_client_settlement_share.get(project_key, u256(0)) == share
                 and self.project_client_settlement_version.get(project_key, u256(0)) == version
                 and self.project_client_settlement_escrow.get(project_key, u256(0)) == escrow
@@ -1560,7 +1638,7 @@ or
             self.project_client_settlement_escrow[project_key] = escrow
         else:
             if (
-                bool(self.project_contractor_settlement_set.get(project_key, False))
+                match_existing and self._settlement_open(project_key, "CONTRACTOR")
                 and self.project_contractor_settlement_share.get(project_key, u256(0)) == share
                 and self.project_contractor_settlement_version.get(project_key, u256(0)) == version
                 and self.project_contractor_settlement_escrow.get(project_key, u256(0)) == escrow
@@ -1571,8 +1649,18 @@ or
             self.project_contractor_settlement_version[project_key] = version
             self.project_contractor_settlement_escrow[project_key] = escrow
 
+        key = str(project_id) + ":" + role
+        now = self._chain_unix()
+        self.settlement_offer_ids[key] = self.settlement_offer_ids.get(key, u256(0)) + u256(1)
+        self.settlement_offer_created_at[key] = u256(now)
+        self.settlement_offer_expires_at[key] = u256(now + validity_seconds)
+        self.settlement_offer_cancelled[key] = False
+
         agreed = (
-            bool(self.project_client_settlement_set.get(project_key, False))
+            match_existing
+            and self._settlement_open(project_key, "CLIENT")
+            and self._settlement_open(project_key, "CONTRACTOR")
+            and bool(self.project_client_settlement_set.get(project_key, False))
             and bool(self.project_contractor_settlement_set.get(project_key, False))
             and self.project_client_settlement_share.get(project_key, u256(0))
             == self.project_contractor_settlement_share.get(project_key, u256(0))
@@ -1587,6 +1675,10 @@ or
             self.project_closed[project_key] = True
             self.project_closed_at[project_key] = u256(now)
             self.project_closed_versions[project_key] = version
+            other = "CONTRACTOR" if role == "CLIENT" else "CLIENT"
+            other_key = str(project_id) + ":" + other
+            self.project_settled_offer_ids[project_key] = self.settlement_offer_ids.get(other_key, u256(0))
+            self.project_settled_offer_roles[project_key] = other
             self._release_escrow(project_key, share)
 
     @gl.public.write
@@ -1659,6 +1751,10 @@ or
                 "scope_version_ledger": True,
                 "lifecycle_finality": True,
                 "funded_escrow": True,
+                "settlement_offers": True,
+                "min_settlement_window_seconds": self.MIN_SETTLEMENT_WINDOW_SECONDS,
+                "max_settlement_window_seconds": self.MAX_SETTLEMENT_WINDOW_SECONDS,
+                "default_settlement_window_seconds": self.DEFAULT_SETTLEMENT_WINDOW_SECONDS,
                 "max_escrow_wei": str(MAX_ESCROW_WEI),
                 "default_acceptance_window_seconds": self.DEFAULT_ACCEPTANCE_WINDOW_SECONDS,
                 "min_acceptance_window_seconds": self.MIN_ACCEPTANCE_WINDOW_SECONDS,
@@ -1886,6 +1982,9 @@ or
                 "refund_pending_expiry": (
                     deadline_elapsed and not expiry_recorded
                 ),
+                "chain_timestamp": now,
+                "settled_offer_id": str(int(self.project_settled_offer_ids.get(project_key, u256(0)))),
+                "settled_offer_role": self.project_settled_offer_roles.get(project_key, ""),
                 "client_settlement": self._settlement_json(
                     project_key, "CLIENT"
                 ),

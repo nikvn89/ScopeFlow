@@ -2,6 +2,7 @@
 // (plain text, hex or base64), so a failed write can say why it failed.
 
 export const KNOWN_REVERTS = [
+  'Settlement validity is out of range', 'Settlement offer changed', 'Settlement offer is not open',
   'Project not found', 'Request not found', 'Invalid scope version', 'Only project parties',
   'Scope too short', 'Scope too long', 'Request too short', 'Request too long', 'Invalid chain datetime',
   'Semantic evaluation failed', 'Acceptance window must be between 300 and 2592000 seconds',

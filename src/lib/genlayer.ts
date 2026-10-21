@@ -1,6 +1,6 @@
 import { createClient } from 'genlayer-js'
 import { studionet } from 'genlayer-js/chains'
-import { ExecutionResult, TransactionStatus } from 'genlayer-js/types'
+import { ExecutionResult, TransactionStatus, TransactionHashVariant } from 'genlayer-js/types'
 import { CONTRACT_ADDRESS, EXPLORER_BASE } from './config'
 import { waitForExplicitExecutionResult } from './transactionExecution'
 import { revertReasonFrom } from './revert'
@@ -14,6 +14,7 @@ export type RegistryState = {
   default_acceptance_window_seconds?: number
   min_acceptance_window_seconds?: number
   max_acceptance_window_seconds?: number
+  settlement_offers?: boolean
   funded_escrow?: boolean
   max_escrow_wei?: string
 }
@@ -64,6 +65,9 @@ export type ScopeProject = {
   client_refunded_wei?: string
   settled?: boolean
   refund_pending_expiry?: boolean
+  chain_timestamp?: number
+  settled_offer_id?: string
+  settled_offer_role?: string
   client_settlement?: Settlement
   contractor_settlement?: Settlement
 }
@@ -242,7 +246,9 @@ export async function ensureStudioNet(): Promise<void> {
 }
 
 export async function readRegistry(): Promise<RegistryState> {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(CONTRACT_ADDRESS)) throw new Error('Configure the new ScopeFlow 0.7.0 deployment address and redeploy.')
   const result = await readClient.readContract({
+    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
     address: CONTRACT_ADDRESS,
     functionName: 'get_registry',
     args: [],
@@ -253,6 +259,7 @@ export async function readRegistry(): Promise<RegistryState> {
 
 export async function readProject(projectId: number): Promise<ScopeProject> {
   const result = await readClient.readContract({
+    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
     address: CONTRACT_ADDRESS,
     functionName: 'get_project',
     args: [projectId],
@@ -267,6 +274,7 @@ export async function readProjectsByClient(
   count = 20,
 ): Promise<ClientProjectPage> {
   const result = await readClient.readContract({
+    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
     address: CONTRACT_ADDRESS,
     functionName: 'get_projects_by_client',
     args: [client, fromIndex, count],
@@ -281,6 +289,7 @@ export async function readRequestPage(
   count: number,
 ): Promise<RequestPage> {
   const result = await readClient.readContract({
+    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
     address: CONTRACT_ADDRESS,
     functionName: 'get_requests',
     args: [projectId, fromId, count],
@@ -294,6 +303,7 @@ export async function readScopeVersion(
   version: number,
 ): Promise<ScopeVersionDetail> {
   const result = await readClient.readContract({
+    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
     address: CONTRACT_ADDRESS,
     functionName: 'get_scope_version',
     args: [projectId, version],
@@ -308,6 +318,7 @@ export async function readScopeVersions(
   count = 20,
 ): Promise<ScopeVersionPage> {
   const result = await readClient.readContract({
+    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
     address: CONTRACT_ADDRESS,
     functionName: 'get_scope_versions',
     args: [projectId, fromVersion, count],
@@ -321,6 +332,7 @@ export async function readRequest(
   requestId: number,
 ): Promise<ScopeRequest> {
   const result = await readClient.readContract({
+    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
     address: CONTRACT_ADDRESS,
     functionName: 'get_request',
     args: [projectId, requestId],
@@ -345,7 +357,11 @@ async function submitWrite(
 ): Promise<WriteOutcome> {
   const provider = requireProvider()
 
+  const registry = await readRegistry()
+  if (registry.contract_version !== '0.7.0' || !registry.settlement_offers) throw new Error('This dApp requires the new ScopeFlow 0.7.0 deployment.')
   await ensureStudioNet()
+  const selected = await provider.request({ method: 'eth_accounts' }) as string[]
+  if (!selected[0] || selected[0].toLowerCase() !== account.toLowerCase()) throw new Error('Wallet account changed. Reconnect before signing.')
 
   const walletClient = createClient({
     chain: studionet,
@@ -366,7 +382,7 @@ async function submitWrite(
     receipt = (await Promise.race([
       readClient.waitForTransactionReceipt({
         hash,
-        status: TransactionStatus.ACCEPTED,
+        status: TransactionStatus.FINALIZED,
       }),
       timeoutAfter(180_000),
     ])) as Record<string, unknown>
@@ -382,9 +398,10 @@ async function submitWrite(
     }
   }
 
-  let lastSnapshot: Record<string, unknown> = receipt
+  let lastSnapshot: Record<string, unknown> = {}
+  try { lastSnapshot = await readClient.request({ method: 'eth_getTransactionByHash', params: [hash] }) as Record<string, unknown> } catch { /* bounded polling below */ }
   const executionName = await waitForExplicitExecutionResult(
-    receipt,
+    lastSnapshot,
     async () => {
       lastSnapshot = (await readClient.request({
         method: 'eth_getTransactionByHash',
@@ -461,8 +478,9 @@ export function proposeSettlement(
   account: `0x${string}`,
   projectId: number,
   contractorShareWei: bigint,
+  validitySeconds: number,
 ) {
-  return submitWrite(account, 'propose_settlement', [projectId, contractorShareWei])
+  return submitWrite(account, 'propose_settlement_with_window', [projectId, contractorShareWei, validitySeconds])
 }
 
 export function withdrawDue(
@@ -555,4 +573,11 @@ export function explorerAddressUrl() {
 
 export function explorerTxUrl(hash: string) {
   return `${EXPLORER_BASE}/transactions/${hash}`
+}
+
+export function cancelSettlementOffer(account: `0x${string}`, projectId: number, offerId: string) {
+  return submitWrite(account, 'cancel_settlement_offer', [projectId, BigInt(offerId)])
+}
+export function acceptSettlementOffer(account: `0x${string}`, projectId: number, offerId: string) {
+  return submitWrite(account, 'accept_settlement_offer', [projectId, BigInt(offerId)])
 }

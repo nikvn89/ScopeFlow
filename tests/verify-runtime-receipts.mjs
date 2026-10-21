@@ -1,3 +1,4 @@
+// Historical v2 receipt fixtures only; not v4 runtime evidence.
 import assert from 'node:assert/strict'
 
 import { createClient } from 'genlayer-js'

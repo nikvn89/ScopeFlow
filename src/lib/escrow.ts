@@ -1,4 +1,4 @@
-// Escrow amounts and actions for ScopeFlow v0.6.0.
+// Escrow amounts and actions for ScopeFlow v0.7.0.
 // The contract returns every wei amount as a decimal string; nothing here
 // passes a token amount through a JavaScript number.
 
@@ -8,12 +8,19 @@ export const MAX_ESCROW_WEI = 10n ** 27n
 export type Role = 'CLIENT' | 'CONTRACTOR' | 'OBSERVER'
 
 export type Settlement = {
+  offer_id: string
+  created_at: number
+  expires_at: number
+  status: string
   contractor_share_wei: string
   scope_version: number
   escrow_wei: string
 } | null
 
 export type EscrowFields = {
+  chain_timestamp?: number
+  settled_offer_id?: string
+  settled_offer_role?: string
   status: string
   active_scope_version: number
   escrow_wei?: string
@@ -59,18 +66,18 @@ export type SettlementView = {
   theirShare: bigint
 }
 
-function isCurrent(s: Settlement, project: EscrowFields): boolean {
-  return !!s && s.scope_version === project.active_scope_version && s.escrow_wei === (project.escrow_wei ?? '0')
+function isCurrent(s: Settlement, project: EscrowFields, now: number): boolean {
+  return !!s && s.status === 'OPEN' && /^\d+$/.test(s.offer_id) && BigInt(s.offer_id) > 0n && s.expires_at > Math.max(now, project.chain_timestamp ?? 0) && s.scope_version === project.active_scope_version && s.escrow_wei === (project.escrow_wei ?? '0')
 }
 
-export function settlementView(project: EscrowFields, role: Role): SettlementView | null {
+export function settlementView(project: EscrowFields, role: Role, nowSeconds = Math.floor(Date.now() / 1000)): SettlementView | null {
   if (role === 'OBSERVER') return null
   const mine = role === 'CLIENT' ? project.client_settlement ?? null : project.contractor_settlement ?? null
   const theirs = role === 'CLIENT' ? project.contractor_settlement ?? null : project.client_settlement ?? null
   return {
-    mine: isCurrent(mine, project) ? mine : null,
-    theirs: isCurrent(theirs, project) ? theirs : null,
-    canMatch: project.status === 'ACTIVE' && isCurrent(theirs, project),
+    mine: isCurrent(mine, project, nowSeconds) ? mine : null,
+    theirs: isCurrent(theirs, project, nowSeconds) ? theirs : null,
+    canMatch: project.status === 'ACTIVE' && isCurrent(theirs, project, nowSeconds),
     theirShare: theirs ? wei(theirs.contractor_share_wei) : 0n,
   }
 }
@@ -112,4 +119,29 @@ export function approvalValue(role: Role, priceWei: string | undefined): bigint 
 /** A deposit the client can take back: present, not yet returned, and no longer live. */
 export function canReclaimDeposit(role: Role, request: { deposit_wei?: string; status: string }): boolean {
   return role === 'CLIENT' && wei(request.deposit_wei) > 0n && request.status !== 'AWAITING_APPROVAL'
+}
+
+/** Finalized poststate for consent operations; publication/cancellation cannot move money. */
+export function settlementPostcondition(
+  kind: 'propose' | 'cancel' | 'accept', before: EscrowFields, after: EscrowFields,
+  role: Exclude<Role, 'OBSERVER'>, expected: { id?: string; share?: bigint; seconds?: number },
+): boolean {
+  const mine = (p: EscrowFields) => role === 'CLIENT' ? p.client_settlement : p.contractor_settlement
+  const theirs = role === 'CLIENT' ? before.contractor_settlement : before.client_settlement
+  const money = ['escrow_wei', 'contractor_due_wei', 'client_due_wei', 'contractor_paid_wei', 'client_refunded_wei'] as const
+  if (kind === 'accept') {
+    return !!theirs && theirs.offer_id === expected.id && after.status === 'CLOSED' && !!after.settled
+      && after.settled_offer_id === expected.id && after.settled_offer_role === (role === 'CLIENT' ? 'CONTRACTOR' : 'CLIENT')
+      && wei(after.escrow_wei) === 0n
+      && wei(after.contractor_due_wei) === wei(before.contractor_due_wei) + wei(theirs.contractor_share_wei)
+      && wei(after.client_due_wei) === wei(before.client_due_wei) + wei(before.escrow_wei) - wei(theirs.contractor_share_wei)
+      && after.contractor_paid_wei === before.contractor_paid_wei && after.client_refunded_wei === before.client_refunded_wei
+  }
+  if (after.status !== 'ACTIVE' || money.some(k => wei(after[k]) !== wei(before[k]))) return false
+  const next = mine(after)
+  if (!next) return false
+  if (kind === 'cancel') return next.offer_id === expected.id && next.status === 'CANCELLED'
+  return next.status === 'OPEN' && BigInt(next.offer_id) === BigInt(mine(before)?.offer_id ?? '0') + 1n
+    && wei(next.contractor_share_wei) === expected.share && next.scope_version === before.active_scope_version
+    && next.escrow_wei === before.escrow_wei && next.expires_at - next.created_at === expected.seconds
 }

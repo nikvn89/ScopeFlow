@@ -3,6 +3,8 @@ export type ExplicitExecutionResult =
   | 'FINISHED_WITH_ERROR'
 
 export type TransactionExecutionSnapshot = {
+  status?: unknown
+  statusName?: unknown
   consensus_data?: unknown
   txExecutionResult?: unknown
   txExecutionResultName?: unknown
@@ -36,9 +38,14 @@ function readLeaderExecutionResult(
   const finalLeader = leaders.at(-1)
   if (!isRecord(finalLeader)) return null
 
-  if (finalLeader.execution_result === 'SUCCESS') {
+  let tag: number | null = null
+  try {
+    if (typeof finalLeader.result === 'string' && finalLeader.result.length > 0) tag = atob(finalLeader.result).charCodeAt(0)
+  } catch { /* unknown result encoding */ }
+  if (finalLeader.execution_result === 'SUCCESS' && tag === 0) {
     return 'FINISHED_WITH_RETURN'
   }
+  if (tag === 1) return 'FINISHED_WITH_ERROR' 
   if (finalLeader.execution_result === 'ERROR') {
     return 'FINISHED_WITH_ERROR'
   }
@@ -55,17 +62,7 @@ function defaultDelay(milliseconds: number): Promise<void> {
 export function readExplicitExecutionResult(
   snapshot: TransactionExecutionSnapshot,
 ): ExplicitExecutionResult | null {
-  const named = snapshot.txExecutionResultName
-  if (
-    named === 'FINISHED_WITH_RETURN' ||
-    named === 'FINISHED_WITH_ERROR'
-  ) {
-    return named
-  }
-
-  const numeric = snapshot.txExecutionResult
-  if (numeric === 1 || numeric === '1') return 'FINISHED_WITH_RETURN'
-  if (numeric === 2 || numeric === '2') return 'FINISHED_WITH_ERROR'
+  if (snapshot.status !== 'FINALIZED' && snapshot.statusName !== 'FINALIZED') return null
 
   return readLeaderExecutionResult(snapshot)
 }

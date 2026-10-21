@@ -1,5 +1,5 @@
 """
-GenVM Direct Mode suite for the v0.6.0 funded escrow in contracts/ScopeFlow.py.
+GenVM Direct Mode suite for the v0.7.0 funded escrow in contracts/ScopeFlow.py.
 
 The production contract runs inside the real py-genlayer v0.2.16 SDK through
 genlayer-test's Direct Mode: real storage, real `gl.message_raw` clock, real
@@ -26,7 +26,7 @@ from conftest import GEN, SCOPE, T0, hx
 
 def test_registry_advertises_the_escrow(w):
     r = json.loads(w.c.get_registry())
-    assert r["contract_version"] == "0.6.0"
+    assert r["contract_version"] == "0.7.0"
     assert r["funded_escrow"] is True
     assert r["max_escrow_wei"] == str(10**27)
     assert r["lifecycle_finality"] is True and r["scope_version_ledger"] is True
@@ -298,7 +298,7 @@ def test_matching_proposals_split_the_escrow(w):
     pid = w.active(10 * GEN)
     w.as_(w.contractor).propose_settlement(pid, 6 * GEN)
     p = w.project(pid)
-    assert p["contractor_settlement"] == {"contractor_share_wei": str(6 * GEN), "scope_version": 1, "escrow_wei": str(10 * GEN)}
+    assert {k: p["contractor_settlement"][k] for k in ("contractor_share_wei", "scope_version", "escrow_wei")} == {"contractor_share_wei": str(6 * GEN), "scope_version": 1, "escrow_wei": str(10 * GEN)}
     assert p["closed"] is False
     w.as_(w.client).propose_settlement(pid, 5 * GEN)
     assert w.project(pid)["closed"] is False

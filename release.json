@@ -1,0 +1,21 @@
+{
+  "project": "ScopeFlow",
+  "milestone": "v4",
+  "submission_status": "CANDIDATE_RUNTIME_PENDING",
+  "contract_version": "0.7.0",
+  "network": "StudioNet",
+  "chain_id": 61999,
+  "accepted_milestone_v3_commit": "24e3c6d3bc318c791045eb53fe31d7fdd3a9cc67",
+  "provided_v3_comparison_base_commit": "25d506061c8817872b652fefec51555629730bf9",
+  "reviewed_project_commit": null,
+  "contract_file": "contracts/ScopeFlow.py",
+  "normalized_sha256": "25001c63873668b4fb25bbde32b5f4dc71ba088dea28dcc545ef34d672ce9a8f",
+  "normalization": "CRLF to LF only; no trim",
+  "deployment": {
+    "address": null,
+    "transaction": null,
+    "status": "PENDING_NEW_DEPLOYMENT"
+  },
+  "runtime_status": "NOT RUN",
+  "submitted_head_policy": "Use the actual GitHub commit SHA after upload; never main."
+}

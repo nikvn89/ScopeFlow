@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-21",
+  "contract_version": "0.7.0",
+  "source_sha256": "25001c63873668b4fb25bbde32b5f4dc71ba088dea28dcc545ef34d672ce9a8f",
+  "sdk_direct": {
+    "passed": 71,
+    "failed": 0,
+    "model": "controlled responses",
+    "native_transfer": "recorder, not network delivery"
+  },
+  "frontend_unit": {
+    "passed": 19,
+    "failed": 0
+  },
+  "genvm_lint": {
+    "checks": 3,
+    "result": "PASS"
+  },
+  "source_and_directed_checks": {
+    "passed": 73
+  },
+  "production_stub_checks": {
+    "passed": 99
+  },
+  "ledger_model_property_sweep": {
+    "traces": 5000,
+    "transitions": 80313,
+    "invariant_failures": 0
+  },
+  "mutation": {
+    "killed": 52,
+    "total": 52,
+    "excluded_equivalent_old_pin_mutants": 2,
+    "infrastructure_errors_count_as_kills": false
+  },
+  "typescript_and_production_build": "PASS",
+  "live_v4_deployment": null,
+  "live_v4_runtime": "NOT RUN",
+  "browser_visual_and_wallet_signing": "NOT RUN"
+}

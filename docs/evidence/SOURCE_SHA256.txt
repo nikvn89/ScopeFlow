@@ -1,1 +1,4 @@
-ac4ff25ac0bd4ead34db528e97f3d822e96a39fbc88e8fbd37b66a7eb1e704bc  contracts/ScopeFlow.py
+ScopeFlow v4 candidate / contract 0.7.0
+contracts/ScopeFlow.py
+SHA256 (CRLF to LF only): 25001c63873668b4fb25bbde32b5f4dc71ba088dea28dcc545ef34d672ce9a8f
+Deployment: pending; runtime: NOT RUN

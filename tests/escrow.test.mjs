@@ -7,6 +7,7 @@ import {
   formatGen,
   parseGen,
   settlementView,
+  settlementPostcondition,
   wei,
 } from '../src/lib/escrow.ts'
 
@@ -55,13 +56,13 @@ test('each party withdraws only its own due balance', () => {
 
 test('a settlement can be matched only while it is current', () => {
   const share = (6n * GEN).toString()
-  const current = project({ contractor_settlement: { contractor_share_wei: share, scope_version: 2, escrow_wei: (10n * GEN).toString() } })
+  const current = project({ contractor_settlement: { offer_id: '1', created_at: 1, expires_at: 9999999999, status: 'OPEN', contractor_share_wei: share, scope_version: 2, escrow_wei: (10n * GEN).toString() } })
   const view = settlementView(current, 'CLIENT')
   assert.equal(view.canMatch, true)
   assert.equal(view.theirShare, 6n * GEN)
-  const staleVersion = project({ contractor_settlement: { contractor_share_wei: share, scope_version: 1, escrow_wei: (10n * GEN).toString() } })
+  const staleVersion = project({ contractor_settlement: { offer_id: '1', created_at: 1, expires_at: 9999999999, status: 'OPEN', contractor_share_wei: share, scope_version: 1, escrow_wei: (10n * GEN).toString() } })
   assert.equal(settlementView(staleVersion, 'CLIENT').canMatch, false)
-  const staleEscrow = project({ contractor_settlement: { contractor_share_wei: share, scope_version: 2, escrow_wei: (9n * GEN).toString() } })
+  const staleEscrow = project({ contractor_settlement: { offer_id: '1', created_at: 1, expires_at: 9999999999, status: 'OPEN', contractor_share_wei: share, scope_version: 2, escrow_wei: (9n * GEN).toString() } })
   assert.equal(settlementView(staleEscrow, 'CLIENT').canMatch, false)
   assert.equal(settlementView(current, 'OBSERVER'), null)
   assert.equal(settlementView(current, 'CONTRACTOR').mine.contractor_share_wei, share)
@@ -81,4 +82,35 @@ test('a deposit is reclaimable only by the client once the extension is no longe
   assert.equal(canReclaimDeposit('CLIENT', r('AWAITING_APPROVAL')), false)
   assert.equal(canReclaimDeposit('CONTRACTOR', r('REJECTED_EXTENSION')), false)
   assert.equal(canReclaimDeposit('CLIENT', r('REJECTED_EXTENSION', '0')), false)
+})
+
+const offer = (over={}) => ({offer_id:'1',created_at:100,expires_at:160,status:'OPEN',scope_version:2,escrow_wei:(10n*GEN).toString(),contractor_share_wei:(6n*GEN).toString(),...over})
+test('offer expiry uses the later of contract and browser time',()=>{
+  const p=project({contractor_settlement:offer()})
+  assert.equal(settlementView(p,'CLIENT',159).canMatch,true)
+  assert.equal(settlementView(p,'CLIENT',160).canMatch,false)
+  assert.equal(settlementView({...p,chain_timestamp:161},'CLIENT',150).canMatch,false)
+})
+test('cancelled, stale and malformed IDs are never actionable',()=>{
+  for(const o of [offer({status:'CANCELLED'}),offer({status:'STALE'}),offer({offer_id:'0'}),offer({offer_id:'bad'}),offer({status:'EXPIRED'})]) {
+    assert.equal(settlementView(project({contractor_settlement:o}),'CLIENT',101).canMatch,false)
+  }
+})
+test('publication verifies nonce, value, scope and untouched funds',()=>{
+  const b=project(), a=project({client_settlement:offer()})
+  assert.equal(settlementPostcondition('propose',b,a,'CLIENT',{share:6n*GEN,seconds:60}),true)
+  assert.equal(settlementPostcondition('propose',b,{...a,escrow_wei:'0'},'CLIENT',{share:6n*GEN,seconds:60}),false)
+  assert.equal(settlementPostcondition('propose',b,{...a,client_settlement:offer({offer_id:'2'})},'CLIENT',{share:6n*GEN,seconds:60}),false)
+})
+test('cancel verifies exact cancelled ID and unchanged funds',()=>{
+  const b=project({client_settlement:offer()}),a=project({client_settlement:offer({status:'CANCELLED'})})
+  assert.equal(settlementPostcondition('cancel',b,a,'CLIENT',{id:'1'}),true)
+  assert.equal(settlementPostcondition('cancel',b,a,'CLIENT',{id:'2'}),false)
+  assert.equal(settlementPostcondition('cancel',b,{...a,client_due_wei:'1'},'CLIENT',{id:'1'}),false)
+})
+test('accept verifies exact ID, proposer and both allocations',()=>{
+  const b=project({contractor_settlement:offer()})
+  const a=project({status:'CLOSED',settled:true,settled_offer_id:'1',settled_offer_role:'CONTRACTOR',escrow_wei:'0',contractor_due_wei:(6n*GEN).toString(),client_due_wei:(4n*GEN).toString()})
+  assert.equal(settlementPostcondition('accept',b,a,'CLIENT',{id:'1'}),true)
+  for(const patch of [{settled_offer_id:'2'},{settled_offer_role:'CLIENT'},{client_due_wei:'0'},{contractor_due_wei:'0'},{status:'ACTIVE'}])assert.equal(settlementPostcondition('accept',b,{...a,...patch},'CLIENT',{id:'1'}),false)
 })

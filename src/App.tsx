@@ -22,6 +22,8 @@ import {
   submitPricedRequest,
   fundProject,
   proposeSettlement,
+  cancelSettlementOffer,
+  acceptSettlementOffer,
   withdrawDue,
   reclaimExtensionDeposit,
   type ClientProjectSummary,
@@ -48,6 +50,7 @@ import {
   formatGen,
   parseGen,
   settlementView,
+  settlementPostcondition,
   wei,
 } from './lib/escrow'
 
@@ -359,6 +362,8 @@ function EscrowPanel({
   onFund,
   onWithdraw,
   onPropose,
+  onCancelOffer,
+  onAcceptOffer,
 }: {
   project: ScopeProject
   role: Role
@@ -369,11 +374,16 @@ function EscrowPanel({
   setSettlementInput: (value: string) => void
   onFund: () => void
   onWithdraw: () => void
-  onPropose: (share?: bigint) => void
+  onPropose: (seconds: number) => void
+  onCancelOffer: (id: string) => void
+  onAcceptOffer: (id: string) => void
 }) {
+  const [validitySeconds, setValiditySeconds] = useState(86400)
+  const [clock, setClock] = useState(() => Math.floor(Date.now() / 1000))
+  useEffect(() => { const timer = window.setInterval(() => setClock(Math.floor(Date.now()/1000)), 1000); return () => window.clearInterval(timer) }, [])
   if (project.escrow_wei === undefined) return null
   const actions = escrowActions(project, role)
-  const settlement = settlementView(project, role)
+  const settlement = settlementView(project, role, clock)
   const escrow = actions.escrow
   return (
     <section className="panel escrow-card">
@@ -424,30 +434,39 @@ function EscrowPanel({
         <div className="settlement-box">
           <span className="eyebrow">SETTLE EARLY · AGREED SPLIT</span>
           <p>
-            If the work ends early, both parties propose the Contractor&apos;s share of {formatGen(escrow)}. Matching
-            proposals close the project and split the escrow; the rest goes back to the Client.
+            Publish a time-limited offer for the Contractor&apos;s share. The other party must accept the exact offer before it expires. Cancelling an offer leaves the escrow held.
           </p>
           <div className="approval-grid">
             <div className={settlement.mine ? 'approval approved' : 'approval'}>
-              <span>You propose</span>
+              <span>Your latest offer</span>
               <strong>{settlement.mine ? formatGen(wei(settlement.mine.contractor_share_wei)) : '—'}</strong>
+              <small>{(role === 'CLIENT' ? project.client_settlement : project.contractor_settlement)?.status ?? 'No offer'}</small>
+              {settlement.mine && <small>#{settlement.mine.offer_id} · {Math.max(0, settlement.mine.expires_at - Math.max(clock, project.chain_timestamp ?? 0))}s remaining</small>}
             </div>
             <div className={settlement.theirs ? 'approval approved' : 'approval'}>
               <span>{role === 'CLIENT' ? 'Contractor' : 'Client'} proposes</span>
               <strong>{settlement.theirs ? formatGen(settlement.theirShare) : '—'}</strong>
+              <small>{(role === 'CLIENT' ? project.contractor_settlement : project.client_settlement)?.status ?? 'No offer'}</small>
+              {settlement.theirs && <small>#{settlement.theirs.offer_id} · {Math.max(0, settlement.theirs.expires_at - Math.max(clock, project.chain_timestamp ?? 0))}s remaining</small>}
             </div>
           </div>
           {settlement.canMatch && (
             <button
               className="button button-primary full-width-action"
               disabled={busy !== null}
-              onClick={() => onPropose(settlement.theirShare)}
+              onClick={() => settlement.theirs && onAcceptOffer(settlement.theirs.offer_id)}
             >
               {busy === 'settle'
                 ? 'Settling…'
                 : `Accept: ${formatGen(settlement.theirShare)} to Contractor, ${formatGen(escrow - settlement.theirShare)} back to Client`}
             </button>
           )}
+          {settlement.mine && <button className="button button-secondary full-width-action" disabled={busy !== null} onClick={() => settlement.mine && onCancelOffer(settlement.mine.offer_id)}>Cancel my offer #{settlement.mine.offer_id}</button>}
+          <label className="offer-validity">Offer validity
+            <select value={validitySeconds} onChange={e => setValiditySeconds(Number(e.target.value))} disabled={busy !== null}>
+              <option value={60}>1 minute</option><option value={900}>15 minutes</option><option value={3600}>1 hour</option><option value={86400}>24 hours</option><option value={604800}>7 days</option>
+            </select>
+          </label>
           <div className="inline-form">
             <input
               inputMode="decimal"
@@ -458,9 +477,9 @@ function EscrowPanel({
             <button
               className="button button-secondary"
               disabled={busy !== null || !settlementInput.trim()}
-              onClick={() => onPropose()}
+              onClick={() => onPropose(validitySeconds)}
             >
-              {busy === 'settle' ? 'Proposing…' : 'Propose split'}
+              {busy === 'settle' ? 'Proposing…' : 'Publish offer'}
             </button>
           </div>
         </div>
@@ -1137,40 +1156,35 @@ export default function App() {
     }
   }
 
-  async function handleProposeSettlement(shareOverride?: bigint) {
+  async function handleProposeSettlement(seconds: number) {
     if (!account || !project || role === 'OBSERVER') return
     let share: bigint
-    try {
-      share = shareOverride ?? parseGen(settlementInput)
-    } catch (error) {
-      setNotice({ kind: 'error', title: 'Invalid share', message: normalizeError(error) })
-      return
+    try { share = parseGen(settlementInput) } catch (error) {
+      setNotice({kind:'error', title:'Invalid share', message:normalizeError(error)}); return
     }
     if (share > wei(project.escrow_wei)) {
-      setNotice({ kind: 'error', title: 'Share too large', message: 'The contractor share cannot exceed the escrow.' })
-      return
+      setNotice({kind:'error',title:'Share too large',message:'The contractor share cannot exceed the escrow.'}); return
     }
-    const proposingRole = role
+    const before = project, actingRole = role
+    const outcome = await executeWrite('settle', () => proposeSettlement(account, before.project_id, share, seconds))
+    if (outcome?.kind !== 'succeeded') return
+    setBusy('verify-offer')
+    try {
+      const verified = await verifyPostcondition(outcome, async () => settlementPostcondition('propose', before, await readProject(before.project_id), actingRole, {share, seconds}), 'The exact offer and unchanged escrow were not verified. Refresh before continuing.')
+      if (verified) { setSettlementInput(''); await openProject(before.project_id, pageStart) }
+    } finally { setBusy(null) }
+  }
 
-    const outcome = await executeWrite('settle', () =>
-      proposeSettlement(account, project.project_id, share),
-    )
-
-    if (outcome?.kind === 'succeeded') {
-      await new Promise((resolve) => window.setTimeout(resolve, 1200))
-      const verified = await verifyPostcondition(
-        outcome,
-        async () => {
-          const next = await readProject(project.project_id)
-          const mine = proposingRole === 'CLIENT' ? next.client_settlement : next.contractor_settlement
-          return next.closed || (!!mine && wei(mine.contractor_share_wei) === share)
-        },
-        'Settlement proposal executed, but it was not observed on the project.',
-      )
-      if (!verified) return
-      setSettlementInput('')
-      await openProject(project.project_id, pageStart)
-    }
+  async function handleOfferAction(kind: 'accept' | 'cancel', id: string) {
+    if (!account || !project || role === 'OBSERVER') return
+    const before = project, actingRole = role
+    const outcome = await executeWrite('settle', () => kind === 'accept' ? acceptSettlementOffer(account, before.project_id, id) : cancelSettlementOffer(account, before.project_id, id))
+    if (outcome?.kind !== 'succeeded') return
+    setBusy('verify-offer')
+    try {
+      const verified = await verifyPostcondition(outcome, async () => settlementPostcondition(kind, before, await readProject(before.project_id), actingRole, {id}), 'Offer consent or allocation was not verified. Refresh before continuing.')
+      if (verified) await openProject(before.project_id, pageStart)
+    } finally { setBusy(null) }
   }
 
   async function handleOpenScopeVersion(version: number) {
@@ -1312,6 +1326,9 @@ export default function App() {
         </header>
 
         <main className="content">
+        {(!CONTRACT_ADDRESS || (registry && (registry.contract_version !== '0.7.0' || !registry.settlement_offers))) && (
+          <div className="notice notice-warning" role="status">This deployment is not ready for settlement offers. Configure the new ScopeFlow 0.7.0 address and redeploy before signing.</div>
+        )}
         {!project ? (
           <>
             <section className="hero dashboard-hero">
@@ -1849,7 +1866,9 @@ export default function App() {
                     setSettlementInput={setSettlementInput}
                     onFund={() => void handleFund()}
                     onWithdraw={() => void handleWithdraw()}
-                    onPropose={(share) => void handleProposeSettlement(share)}
+                    onPropose={(seconds) => void handleProposeSettlement(seconds)}
+                    onAcceptOffer={(id) => void handleOfferAction('accept', id)}
+                    onCancelOffer={(id) => void handleOfferAction('cancel', id)}
                   />
 
                   <section className="panel stats-card">
