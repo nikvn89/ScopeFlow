@@ -1,7 +1,7 @@
 {
   "project": "ScopeFlow",
   "milestone": "v5",
-  "submission_status": "DEPLOYMENT_VERIFIED_BUSINESS_RUNTIME_PENDING",
+  "submission_status": "CORE_RUNTIME_VERIFIED_SUBMISSION_LINKS_PENDING",
   "contract_version": "0.8.0",
   "network": "StudioNet",
   "chain_id": 61999,
@@ -19,8 +19,8 @@
     "verified_date": "2026-10-21",
     "registry_project_count_at_verification": 0
   },
-  "runtime_status": "NOT_RUN",
-  "runtime_evidence": null,
+  "runtime_status": "VERIFIED_CORE_FLOW_AND_NATIVE_PAYOUTS",
+  "runtime_evidence": "tests/evidence/verified-runtime-0.8.0.json",
   "submitted_head_policy": "Pin actual uploaded commit SHA; never main. Do not invent the original Project baseline SHA.",
   "readable_contract_file": "contracts/ScopeFlow.py",
   "readable_normalized_sha256": "578eaf5e20ae33f9dc0b591ffcad134f848088d2943b49b3f531aa22b8182931",
@@ -31,5 +31,8 @@
     "request_budget_bytes": 100000,
     "byte_budget_policy": "Conservative SDK request regression guard; not a claim about the live RPC maximum"
   },
-  "deployment_evidence": "tests/evidence/deployment-0.8.0.json"
+  "deployment_evidence": "tests/evidence/deployment-0.8.0.json",
+  "runtime_verified_at": "2026-10-21T12:18:31.242Z",
+  "production_url": null,
+  "submitted_commit": null
 }

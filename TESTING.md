@@ -1,7 +1,7 @@
 # ScopeFlow V5 verification
 
 Contract 0.8.0; local execution verified on 21 October 2026. The fresh v5 deployment is verified;
-business-flow runtime and native payouts are **NOT RUN**. The source fingerprint in `release.json` is checked
+the core signed business flow and all three native payouts are **VERIFIED**. The source fingerprint in `release.json` is checked
 by every production build.
 
 | Gate | Executed result | Scope |
@@ -18,6 +18,8 @@ by every production build.
 | Mutation matrix | 68 / 68 killed | 52 retained faults + 16 delivery/reservation/payment faults |
 | Deployment payload budget | PASS | 95,135 / 95,199 JSON bytes for SDK ABI v5/v6, below conservative 100 KB guard |
 | TypeScript and Vite | PASS | Production build with the verified v5 address |
+| Live two-wallet delivery/payment flow | PASS | Project #1, GAPS then MATCHES, exact approval, active progress withdrawal, final split and both final withdrawals |
+| Native delivery | 3 payouts verified | Linked finalized credited children and wallet deltas; Contractor 0.002 GEN, Client 0.001 GEN, contract zero |
 
 Executed gate and mutation results are recorded in `tests/evidence/local-results.json`. The runner requires a passing production baseline,
 unambiguous source anchors and collected tests. Import/collection errors and
@@ -61,8 +63,10 @@ python tests/mutation_check.py
 The SDK suite uses real py-genlayer v0.2.16 storage/execution with controlled
 model answers and a native-transfer recorder. It is not distributed GenVM
 consensus or proof of model accuracy/native delivery. DOM tests are not browser
-layout or wallet signing tests. See RUNTIME_TEST.md for the remaining signed
+layout or wallet signing tests. See RUNTIME_TEST.md for the executed signed
 path and SECURITY.md for semantic and settlement limits. V4 historical results
 are preserved under `docs/history/v4` and are not v5 proof.
 
 Deployment source parity and finalized registry/execution were verified on 21 October 2026; see `tests/evidence/deployment-0.8.0.json`. No delivery-flow or native-payout PASS is inferred from deployment.
+
+The core live result is recorded in `tests/evidence/verified-runtime-0.8.0.json`. Revision/stale-offer/authorization/replay/cap failures were not separately exercised as live negative cases for v5; their results above are local SDK coverage. The production URL and pinned submission SHA are still to be confirmed.

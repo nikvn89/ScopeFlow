@@ -2,7 +2,7 @@
 
 ScopeFlow helps a Client and Contractor agree scope, track changes, review deliveries and allocate payment for completed milestones. GenLayer evaluates two narrow textual questions: whether a requested change extends the agreed scope, and whether a delivery report describes satisfying a milestone's fixed criteria. Money moves only through explicit party-authorized contract transitions.
 
-**Milestone v5 / contract `ScopeGuard` 0.8.0. Local verification and the fresh deployment are verified; v5 business-flow runtime and native payouts are pending.**
+**Milestone v5 / contract `ScopeGuard` 0.8.0. Local verification, the fresh deployment and the core signed delivery/payment flow are verified, including three native payouts. Public production URL and submission commit links still require confirmation.**
 
 ## What changed from v4
 
@@ -22,8 +22,16 @@ The frozen v4 source is commit [`351e93957b516bd0349bc754453161c2787d4452`](http
 
 - StudioNet address: [`0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C`](https://explorer-studio.genlayer.com/address/0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C).
 - Deployment transaction: [`0xae058e2dc80b9a45ecda912d7902a899d25b612139d3a891a186c1c53512d307`](https://explorer-studio.genlayer.com/tx/0xae058e2dc80b9a45ecda912d7902a899d25b612139d3a891a186c1c53512d307).
-- Checked 21 October 2026: FINALIZED, normal GenVM return, exact compact-source fingerprint; finalized registry 0.8.0, all delivery/payment capabilities true and project_count 0.
+- Checked 21 October 2026: FINALIZED, normal GenVM return, exact compact-source fingerprint; finalized registry 0.8.0, all delivery/payment capabilities true and project_count 0 at deployment verification (now 1).
 - Public selected fields: [deployment evidence](tests/evidence/deployment-0.8.0.json). This is deployment proof, not delivery/payment-flow proof.
+
+## Verified v5 live flow
+
+On 21 October 2026, Project #1 / milestone #1 completed the two-wallet path on the address above. Attempt #1 returned `DELIVERY_GAPS`; attempt #2 returned `DELIVERY_MATCHES`. Neither report allocated money automatically. Client approval of exact attempt #2 created allocation receipt #1 for 0.001 GEN. The Contractor withdrew that amount while the project remained ACTIVE. Contractor final offer #1 (0.001 GEN share, 3,600-second validity) was accepted by the Client against the remaining 0.002 GEN; both parties then withdrew.
+
+Final state: CLOSED; escrow, reservations and both dues zero. Contractor received 0.002 GEN total; Client received 0.001 GEN back; the contract native balance is zero. All three payouts have finalized normal-return parents, linked finalized credited native children and matching wallet balance deltas. Receipt #1 stayed unchanged.
+
+See [verified runtime evidence](tests/evidence/verified-runtime-0.8.0.json) and [runtime report](RUNTIME_TEST.md). These are two textual examples, not proof that external pages were delivered or a classifier accuracy benchmark. Other negative branches retain local SDK coverage only.
 
 ## Delivery workflow
 

@@ -1,0 +1,1041 @@
+{
+  "status": "VERIFIED_CORE_RUNTIME",
+  "verified_at": "2026-10-21T12:18:31.242Z",
+  "network": "StudioNet",
+  "chain_id": 61999,
+  "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+  "contract_version": "0.8.0",
+  "source_sha256": "0037942acff3e68b64fc4d9dc9ae04ce19a5574814d713474bb2965a3d702d76",
+  "project_id": 1,
+  "milestone_id": 1,
+  "client": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+  "contractor": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+  "read_variant": "LATEST_FINAL",
+  "scope": "Build responsive home and pricing pages with working navigation between both pages.",
+  "live_results": {
+    "delivery_gaps_without_allocation": "PASS",
+    "delivery_matches_without_automatic_allocation": "PASS",
+    "exact_latest_attempt_approval_and_receipt": "PASS",
+    "progress_withdrawal_while_active": "PASS",
+    "exact_timed_settlement_offer_acceptance": "PASS",
+    "three_linked_native_payouts_and_wallet_deltas": "PASS",
+    "receipt_unchanged_after_withdrawal_and_closure": "PASS",
+    "final_money_conservation": "PASS"
+  },
+  "registry": {
+    "project_count": 1,
+    "contract_version": "0.8.0",
+    "scope_version_ledger": true,
+    "lifecycle_finality": true,
+    "funded_escrow": true,
+    "settlement_offers": true,
+    "milestone_delivery": true,
+    "staged_payments": true,
+    "payment_receipts": true,
+    "max_milestones": 20,
+    "max_delivery_attempts": 5,
+    "min_settlement_window_seconds": 60,
+    "max_settlement_window_seconds": 604800,
+    "default_settlement_window_seconds": 86400,
+    "max_escrow_wei": "1000000000000000000000000000",
+    "default_acceptance_window_seconds": 604800,
+    "min_acceptance_window_seconds": 300,
+    "max_acceptance_window_seconds": 2592000
+  },
+  "delivery_attempts": {
+    "project_id": 1,
+    "milestone_id": 1,
+    "total": 2,
+    "items": [
+      {
+        "submission": {
+          "attempt_id": 1,
+          "milestone_id": 1,
+          "report": "Delivered only a home page. The pricing page and navigation have not been delivered.",
+          "artifact_url": "",
+          "artifact_fetched": false,
+          "decision": "DELIVERY_GAPS",
+          "created_at": 1792582544,
+          "submitted_by": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "67d015d5c985e29c40fd9996eb3cf09b96849f8bf04f189e75de32881e587b78",
+          "agreed_scope_version": 1
+        },
+        "review": null
+      },
+      {
+        "submission": {
+          "attempt_id": 2,
+          "milestone_id": 1,
+          "report": "Delivered responsive home and pricing pages. Working navigation links connect both pages.",
+          "artifact_url": "",
+          "artifact_fetched": false,
+          "decision": "DELIVERY_MATCHES",
+          "created_at": 1792582876,
+          "submitted_by": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+          "agreed_scope_version": 1
+        },
+        "review": {
+          "action": "APPROVED",
+          "receipt_id": 1,
+          "at": 1792583179
+        }
+      }
+    ]
+  },
+  "final_state": {
+    "checked_at": "2026-10-21T12:18:15.492Z",
+    "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+    "project": {
+      "project_id": 1,
+      "status": "CLOSED",
+      "active_scope_version": 1,
+      "escrow_wei": "0",
+      "reserved_wei": "0",
+      "available_wei": "0",
+      "contractor_due_wei": "0",
+      "client_due_wei": "0",
+      "contractor_paid_wei": "2000000000000000",
+      "client_refunded_wei": "1000000000000000",
+      "milestone_count": 1,
+      "payment_revision": 2
+    },
+    "milestone": {
+      "milestone_id": 1,
+      "title": "Responsive pages",
+      "criteria": "Deliver responsive home and pricing pages with working navigation between both pages.",
+      "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+      "budget_wei": "1000000000000000",
+      "status": "PAID",
+      "proposed_scope_version": 1,
+      "agreed_scope_version": 1,
+      "created_at": 1792582184,
+      "accepted_at": 1792582400,
+      "paid_at": 1792583179,
+      "attempt_count": 2,
+      "latest_attempt_id": 2,
+      "receipt_id": 1,
+      "recorded_status": "PAID",
+      "latest_attempt": {
+        "attempt_id": 2,
+        "milestone_id": 1,
+        "report": "Delivered responsive home and pricing pages. Working navigation links connect both pages.",
+        "artifact_url": "",
+        "artifact_fetched": false,
+        "decision": "DELIVERY_MATCHES",
+        "created_at": 1792582876,
+        "submitted_by": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+        "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+        "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+        "agreed_scope_version": 1
+      },
+      "latest_review": {
+        "action": "APPROVED",
+        "receipt_id": 1,
+        "at": 1792583179
+      }
+    },
+    "payment_receipts": [
+      {
+        "receipt_id": 1,
+        "project_id": 1,
+        "milestone_id": 1,
+        "title": "Responsive pages",
+        "attempt_id": 2,
+        "amount_wei": "1000000000000000",
+        "client": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+        "contractor": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+        "approved_by": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+        "created_at": 1792583179,
+        "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+        "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+        "agreed_scope_version": 1,
+        "current_scope_version": 1,
+        "payment_revision": 2,
+        "escrow_before_wei": "3000000000000000",
+        "escrow_after_wei": "2000000000000000",
+        "kind": "MILESTONE_ALLOCATION",
+        "native_transfer": false
+      }
+    ]
+  },
+  "state_checkpoints": [
+    {
+      "checked_at": "2026-10-21T11:22:54.124Z",
+      "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "project": {
+        "project_id": 1,
+        "client": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+        "contractor": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+        "status": "PENDING_CONTRACTOR_ACCEPTANCE",
+        "active_scope_version": 1,
+        "scope_version_count": 0,
+        "escrow_wei": "3000000000000000",
+        "reserved_wei": "0",
+        "available_wei": "3000000000000000",
+        "contractor_due_wei": "0",
+        "client_due_wei": "0",
+        "milestone_count": 0,
+        "payment_revision": 0,
+        "acceptance_deadline": 1792668048
+      }
+    },
+    {
+      "checked_at": "2026-10-21T11:26:56.772Z",
+      "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "project": {
+        "project_id": 1,
+        "client": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+        "contractor": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+        "status": "ACTIVE",
+        "active_scope_version": 1,
+        "scope_version_count": 1,
+        "escrow_wei": "3000000000000000",
+        "reserved_wei": "0",
+        "available_wei": "3000000000000000",
+        "contractor_due_wei": "0",
+        "client_due_wei": "0",
+        "milestone_count": 0,
+        "payment_revision": 0
+      }
+    },
+    {
+      "checked_at": "2026-10-21T11:32:27.575Z",
+      "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "project": {
+        "project_id": 1,
+        "status": "ACTIVE",
+        "active_scope_version": 1,
+        "escrow_wei": "3000000000000000",
+        "reserved_wei": "0",
+        "available_wei": "3000000000000000",
+        "contractor_due_wei": "0",
+        "client_due_wei": "0",
+        "milestone_count": 1,
+        "payment_revision": 0
+      },
+      "milestone": {
+        "milestone_id": 1,
+        "title": "Responsive pages",
+        "criteria": "Deliver responsive home and pricing pages with working navigation between both pages.",
+        "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+        "budget_wei": "1000000000000000",
+        "status": "PROPOSED",
+        "proposed_scope_version": 1,
+        "agreed_scope_version": 0,
+        "created_at": 1792582184,
+        "accepted_at": 0,
+        "paid_at": 0,
+        "attempt_count": 0,
+        "latest_attempt_id": 0,
+        "receipt_id": 0,
+        "recorded_status": "PROPOSED",
+        "latest_attempt": null,
+        "latest_review": null
+      }
+    },
+    {
+      "checked_at": "2026-10-21T11:37:43.261Z",
+      "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "project": {
+        "project_id": 1,
+        "status": "ACTIVE",
+        "active_scope_version": 1,
+        "escrow_wei": "3000000000000000",
+        "reserved_wei": "1000000000000000",
+        "available_wei": "2000000000000000",
+        "contractor_due_wei": "0",
+        "client_due_wei": "0",
+        "contractor_paid_wei": "0",
+        "client_refunded_wei": "0",
+        "milestone_count": 1,
+        "payment_revision": 1
+      },
+      "milestone": {
+        "milestone_id": 1,
+        "title": "Responsive pages",
+        "criteria": "Deliver responsive home and pricing pages with working navigation between both pages.",
+        "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+        "budget_wei": "1000000000000000",
+        "status": "SUBMITTED",
+        "proposed_scope_version": 1,
+        "agreed_scope_version": 1,
+        "created_at": 1792582184,
+        "accepted_at": 1792582400,
+        "paid_at": 0,
+        "attempt_count": 1,
+        "latest_attempt_id": 1,
+        "receipt_id": 0,
+        "recorded_status": "SUBMITTED",
+        "latest_attempt": {
+          "attempt_id": 1,
+          "milestone_id": 1,
+          "report": "Delivered only a home page. The pricing page and navigation have not been delivered.",
+          "artifact_url": "",
+          "artifact_fetched": false,
+          "decision": "DELIVERY_GAPS",
+          "created_at": 1792582544,
+          "submitted_by": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "67d015d5c985e29c40fd9996eb3cf09b96849f8bf04f189e75de32881e587b78",
+          "agreed_scope_version": 1
+        },
+        "latest_review": null
+      },
+      "payment_receipts": []
+    },
+    {
+      "checked_at": "2026-10-21T11:43:58.642Z",
+      "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "project": {
+        "project_id": 1,
+        "status": "ACTIVE",
+        "active_scope_version": 1,
+        "escrow_wei": "3000000000000000",
+        "reserved_wei": "1000000000000000",
+        "available_wei": "2000000000000000",
+        "contractor_due_wei": "0",
+        "client_due_wei": "0",
+        "contractor_paid_wei": "0",
+        "client_refunded_wei": "0",
+        "milestone_count": 1,
+        "payment_revision": 1
+      },
+      "milestone": {
+        "milestone_id": 1,
+        "title": "Responsive pages",
+        "criteria": "Deliver responsive home and pricing pages with working navigation between both pages.",
+        "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+        "budget_wei": "1000000000000000",
+        "status": "SUBMITTED",
+        "proposed_scope_version": 1,
+        "agreed_scope_version": 1,
+        "created_at": 1792582184,
+        "accepted_at": 1792582400,
+        "paid_at": 0,
+        "attempt_count": 2,
+        "latest_attempt_id": 2,
+        "receipt_id": 0,
+        "recorded_status": "SUBMITTED",
+        "latest_attempt": {
+          "attempt_id": 2,
+          "milestone_id": 1,
+          "report": "Delivered responsive home and pricing pages. Working navigation links connect both pages.",
+          "artifact_url": "",
+          "artifact_fetched": false,
+          "decision": "DELIVERY_MATCHES",
+          "created_at": 1792582876,
+          "submitted_by": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+          "agreed_scope_version": 1
+        },
+        "latest_review": null
+      },
+      "payment_receipts": []
+    },
+    {
+      "checked_at": "2026-10-21T11:52:29.044Z",
+      "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "project": {
+        "project_id": 1,
+        "status": "ACTIVE",
+        "active_scope_version": 1,
+        "escrow_wei": "2000000000000000",
+        "reserved_wei": "0",
+        "available_wei": "2000000000000000",
+        "contractor_due_wei": "1000000000000000",
+        "client_due_wei": "0",
+        "contractor_paid_wei": "0",
+        "client_refunded_wei": "0",
+        "milestone_count": 1,
+        "payment_revision": 2
+      },
+      "milestone": {
+        "milestone_id": 1,
+        "title": "Responsive pages",
+        "criteria": "Deliver responsive home and pricing pages with working navigation between both pages.",
+        "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+        "budget_wei": "1000000000000000",
+        "status": "PAID",
+        "proposed_scope_version": 1,
+        "agreed_scope_version": 1,
+        "created_at": 1792582184,
+        "accepted_at": 1792582400,
+        "paid_at": 1792583179,
+        "attempt_count": 2,
+        "latest_attempt_id": 2,
+        "receipt_id": 1,
+        "recorded_status": "PAID",
+        "latest_attempt": {
+          "attempt_id": 2,
+          "milestone_id": 1,
+          "report": "Delivered responsive home and pricing pages. Working navigation links connect both pages.",
+          "artifact_url": "",
+          "artifact_fetched": false,
+          "decision": "DELIVERY_MATCHES",
+          "created_at": 1792582876,
+          "submitted_by": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+          "agreed_scope_version": 1
+        },
+        "latest_review": {
+          "action": "APPROVED",
+          "receipt_id": 1,
+          "at": 1792583179
+        }
+      },
+      "payment_receipts": [
+        {
+          "receipt_id": 1,
+          "project_id": 1,
+          "milestone_id": 1,
+          "title": "Responsive pages",
+          "attempt_id": 2,
+          "amount_wei": "1000000000000000",
+          "client": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "contractor": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "approved_by": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "created_at": 1792583179,
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+          "agreed_scope_version": 1,
+          "current_scope_version": 1,
+          "payment_revision": 2,
+          "escrow_before_wei": "3000000000000000",
+          "escrow_after_wei": "2000000000000000",
+          "kind": "MILESTONE_ALLOCATION",
+          "native_transfer": false
+        }
+      ]
+    },
+    {
+      "checked_at": "2026-10-21T12:05:34.718Z",
+      "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "project": {
+        "project_id": 1,
+        "status": "ACTIVE",
+        "active_scope_version": 1,
+        "escrow_wei": "2000000000000000",
+        "reserved_wei": "0",
+        "available_wei": "2000000000000000",
+        "contractor_due_wei": "0",
+        "client_due_wei": "0",
+        "contractor_paid_wei": "1000000000000000",
+        "client_refunded_wei": "0",
+        "milestone_count": 1,
+        "payment_revision": 2
+      },
+      "milestone": {
+        "milestone_id": 1,
+        "title": "Responsive pages",
+        "criteria": "Deliver responsive home and pricing pages with working navigation between both pages.",
+        "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+        "budget_wei": "1000000000000000",
+        "status": "PAID",
+        "proposed_scope_version": 1,
+        "agreed_scope_version": 1,
+        "created_at": 1792582184,
+        "accepted_at": 1792582400,
+        "paid_at": 1792583179,
+        "attempt_count": 2,
+        "latest_attempt_id": 2,
+        "receipt_id": 1,
+        "recorded_status": "PAID",
+        "latest_attempt": {
+          "attempt_id": 2,
+          "milestone_id": 1,
+          "report": "Delivered responsive home and pricing pages. Working navigation links connect both pages.",
+          "artifact_url": "",
+          "artifact_fetched": false,
+          "decision": "DELIVERY_MATCHES",
+          "created_at": 1792582876,
+          "submitted_by": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+          "agreed_scope_version": 1
+        },
+        "latest_review": {
+          "action": "APPROVED",
+          "receipt_id": 1,
+          "at": 1792583179
+        }
+      },
+      "payment_receipts": [
+        {
+          "receipt_id": 1,
+          "project_id": 1,
+          "milestone_id": 1,
+          "title": "Responsive pages",
+          "attempt_id": 2,
+          "amount_wei": "1000000000000000",
+          "client": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "contractor": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "approved_by": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "created_at": 1792583179,
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+          "agreed_scope_version": 1,
+          "current_scope_version": 1,
+          "payment_revision": 2,
+          "escrow_before_wei": "3000000000000000",
+          "escrow_after_wei": "2000000000000000",
+          "kind": "MILESTONE_ALLOCATION",
+          "native_transfer": false
+        }
+      ]
+    },
+    {
+      "checked_at": "2026-10-21T12:14:04.053Z",
+      "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "project": {
+        "project_id": 1,
+        "status": "CLOSED",
+        "active_scope_version": 1,
+        "escrow_wei": "0",
+        "reserved_wei": "0",
+        "available_wei": "0",
+        "contractor_due_wei": "1000000000000000",
+        "client_due_wei": "1000000000000000",
+        "contractor_paid_wei": "1000000000000000",
+        "client_refunded_wei": "0",
+        "milestone_count": 1,
+        "payment_revision": 2
+      },
+      "milestone": {
+        "milestone_id": 1,
+        "title": "Responsive pages",
+        "criteria": "Deliver responsive home and pricing pages with working navigation between both pages.",
+        "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+        "budget_wei": "1000000000000000",
+        "status": "PAID",
+        "proposed_scope_version": 1,
+        "agreed_scope_version": 1,
+        "created_at": 1792582184,
+        "accepted_at": 1792582400,
+        "paid_at": 1792583179,
+        "attempt_count": 2,
+        "latest_attempt_id": 2,
+        "receipt_id": 1,
+        "recorded_status": "PAID",
+        "latest_attempt": {
+          "attempt_id": 2,
+          "milestone_id": 1,
+          "report": "Delivered responsive home and pricing pages. Working navigation links connect both pages.",
+          "artifact_url": "",
+          "artifact_fetched": false,
+          "decision": "DELIVERY_MATCHES",
+          "created_at": 1792582876,
+          "submitted_by": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+          "agreed_scope_version": 1
+        },
+        "latest_review": {
+          "action": "APPROVED",
+          "receipt_id": 1,
+          "at": 1792583179
+        }
+      },
+      "payment_receipts": [
+        {
+          "receipt_id": 1,
+          "project_id": 1,
+          "milestone_id": 1,
+          "title": "Responsive pages",
+          "attempt_id": 2,
+          "amount_wei": "1000000000000000",
+          "client": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "contractor": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "approved_by": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "created_at": 1792583179,
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+          "agreed_scope_version": 1,
+          "current_scope_version": 1,
+          "payment_revision": 2,
+          "escrow_before_wei": "3000000000000000",
+          "escrow_after_wei": "2000000000000000",
+          "kind": "MILESTONE_ALLOCATION",
+          "native_transfer": false
+        }
+      ]
+    },
+    {
+      "checked_at": "2026-10-21T12:18:15.492Z",
+      "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "project": {
+        "project_id": 1,
+        "status": "CLOSED",
+        "active_scope_version": 1,
+        "escrow_wei": "0",
+        "reserved_wei": "0",
+        "available_wei": "0",
+        "contractor_due_wei": "0",
+        "client_due_wei": "0",
+        "contractor_paid_wei": "2000000000000000",
+        "client_refunded_wei": "1000000000000000",
+        "milestone_count": 1,
+        "payment_revision": 2
+      },
+      "milestone": {
+        "milestone_id": 1,
+        "title": "Responsive pages",
+        "criteria": "Deliver responsive home and pricing pages with working navigation between both pages.",
+        "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+        "budget_wei": "1000000000000000",
+        "status": "PAID",
+        "proposed_scope_version": 1,
+        "agreed_scope_version": 1,
+        "created_at": 1792582184,
+        "accepted_at": 1792582400,
+        "paid_at": 1792583179,
+        "attempt_count": 2,
+        "latest_attempt_id": 2,
+        "receipt_id": 1,
+        "recorded_status": "PAID",
+        "latest_attempt": {
+          "attempt_id": 2,
+          "milestone_id": 1,
+          "report": "Delivered responsive home and pricing pages. Working navigation links connect both pages.",
+          "artifact_url": "",
+          "artifact_fetched": false,
+          "decision": "DELIVERY_MATCHES",
+          "created_at": 1792582876,
+          "submitted_by": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+          "agreed_scope_version": 1
+        },
+        "latest_review": {
+          "action": "APPROVED",
+          "receipt_id": 1,
+          "at": 1792583179
+        }
+      },
+      "payment_receipts": [
+        {
+          "receipt_id": 1,
+          "project_id": 1,
+          "milestone_id": 1,
+          "title": "Responsive pages",
+          "attempt_id": 2,
+          "amount_wei": "1000000000000000",
+          "client": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "contractor": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "approved_by": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "created_at": 1792583179,
+          "criteria_hash": "c518b87eeaccfdda389fcd4054200f92d4a43098587394189ae60f7fb64680be",
+          "report_hash": "3976e17444cffffa51a71615e9bfd808df861806d001ac906387a30b126195a1",
+          "agreed_scope_version": 1,
+          "current_scope_version": 1,
+          "payment_revision": 2,
+          "escrow_before_wei": "3000000000000000",
+          "escrow_after_wei": "2000000000000000",
+          "kind": "MILESTONE_ALLOCATION",
+          "native_transfer": false
+        }
+      ]
+    }
+  ],
+  "transactions": [
+    {
+      "hash": "0xae058e2dc80b9a45ecda912d7902a899d25b612139d3a891a186c1c53512d307",
+      "status": "FINALIZED",
+      "from": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 1,
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T09:32:29.868819+00:00",
+      "execution": "FINISHED_WITH_RETURN"
+    },
+    {
+      "hash": "0xfd9d916abd16e9aefc88920225b73c208e1fd46b696979e43c799018fa2fae63",
+      "status": "FINALIZED",
+      "from": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 3000000000000000,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": true,
+      "created_at": "2026-10-21T11:20:48.491614+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "create_project_with_window",
+      "args": [
+        "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+        "Build responsive home and pricing pages with working navigation between both pages.",
+        "86400"
+      ]
+    },
+    {
+      "hash": "0x6273e1030a472c93c2052716426ca0bee3789dd97a430c33fb452ebad847349b",
+      "status": "FINALIZED",
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T11:24:04.359444+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "accept_project",
+      "args": [
+        "1"
+      ]
+    },
+    {
+      "hash": "0xbfbfa23fab3366d669ceaea297ad6513a1ac68590f55c1ee7f96766146dc4c84",
+      "status": "FINALIZED",
+      "from": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T11:29:44.626399+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "propose_milestone",
+      "args": [
+        "1",
+        "Responsive pages",
+        "Deliver responsive home and pricing pages with working navigation between both pages.",
+        "1000000000000000"
+      ]
+    },
+    {
+      "hash": "0x65bdeed5efe40604bb3704e3cf55398f23df013442938735db7475e861247895",
+      "status": "FINALIZED",
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T11:33:20.968822+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "accept_milestone",
+      "args": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "hash": "0x654f2520eb68a8487843f50a097bd96b48cf2ddbf0f212b991abefef7da266fc",
+      "status": "FINALIZED",
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T11:35:44.001886+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "submit_delivery",
+      "args": [
+        "1",
+        "1",
+        "Delivered only a home page. The pricing page and navigation have not been delivered.",
+        ""
+      ]
+    },
+    {
+      "hash": "0xb716a508c217031baed0f17c84ac017307fc4b9e8cffed29c9fe61ba7a7b7ef1",
+      "status": "FINALIZED",
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T11:41:16.398609+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "submit_delivery",
+      "args": [
+        "1",
+        "1",
+        "Delivered responsive home and pricing pages. Working navigation links connect both pages.",
+        ""
+      ]
+    },
+    {
+      "hash": "0x169dfc6b49edc2d14bee7a833d334cb77f6bf4f9b65534fd16f1763f4e97b27f",
+      "status": "FINALIZED",
+      "from": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T11:46:19.141949+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "approve_delivery",
+      "args": [
+        "1",
+        "1",
+        "2"
+      ]
+    },
+    {
+      "hash": "0xe721a6d2e92dea91e3ccd933106a0738716e3a27babc8caa36449176397ece46",
+      "status": "FINALIZED",
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [
+        "0x1db35802e49234a11e6e7c338357b8b294a5d8ed4a63d7da00a00ca660fbd997"
+      ],
+      "value_credited": false,
+      "created_at": "2026-10-21T11:55:10.374753+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "withdraw",
+      "args": [
+        "1"
+      ]
+    },
+    {
+      "hash": "0x1db35802e49234a11e6e7c338357b8b294a5d8ed4a63d7da00a00ca660fbd997",
+      "status": "FINALIZED",
+      "from": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "to": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "value": 1000000000000000,
+      "type": 0,
+      "triggered_by": "0xe721a6d2e92dea91e3ccd933106a0738716e3a27babc8caa36449176397ece46",
+      "value_credited": true,
+      "created_at": "2026-10-21T11:55:44.334390+00:00",
+      "execution": null
+    },
+    {
+      "hash": "0x01fe6e97c7b6e989f3cc316fd9bc04426bf4f177554ecd8b8b499c6356f1c63b",
+      "status": "FINALIZED",
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T12:07:41.855328+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "propose_settlement_with_window",
+      "args": [
+        "1",
+        "1000000000000000",
+        "3600"
+      ]
+    },
+    {
+      "hash": "0xa33ce61a8cbbea29b52064f35c67553248ffaf2fa9217c709c2418c9e464c4ab",
+      "status": "FINALIZED",
+      "from": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [],
+      "value_credited": false,
+      "created_at": "2026-10-21T12:11:13.870698+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "accept_settlement_offer",
+      "args": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "hash": "0x81dd28a07c8ae919b39079dfd056dc9ff2ceec0d5ae586211129f86aa398727b",
+      "status": "FINALIZED",
+      "from": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [
+        "0x212d771c858776181b48f0ab0aadaa8f491b6e54e47fc3790a2d3627ac1c047d"
+      ],
+      "value_credited": false,
+      "created_at": "2026-10-21T12:15:26.723191+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "withdraw",
+      "args": [
+        "1"
+      ]
+    },
+    {
+      "hash": "0x212d771c858776181b48f0ab0aadaa8f491b6e54e47fc3790a2d3627ac1c047d",
+      "status": "FINALIZED",
+      "from": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "to": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "value": 1000000000000000,
+      "type": 0,
+      "triggered_by": "0x81dd28a07c8ae919b39079dfd056dc9ff2ceec0d5ae586211129f86aa398727b",
+      "triggered_transactions": [],
+      "value_credited": true,
+      "created_at": "2026-10-21T12:16:01.103576+00:00",
+      "execution": null
+    },
+    {
+      "hash": "0x00f481fba8979ae517e99e2777d849a7ad522c1f3f3e4433fbc8aa5c11c032c5",
+      "status": "FINALIZED",
+      "from": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "to": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "value": 0,
+      "type": 2,
+      "triggered_by": null,
+      "triggered_transactions": [
+        "0x3412bc9765e576b7edc4078f384541fb45c9289c87ee9b9df399804e4c8ce04d"
+      ],
+      "value_credited": false,
+      "created_at": "2026-10-21T12:16:58.379439+00:00",
+      "execution": "FINISHED_WITH_RETURN",
+      "method": "withdraw",
+      "args": [
+        "1"
+      ]
+    },
+    {
+      "hash": "0x3412bc9765e576b7edc4078f384541fb45c9289c87ee9b9df399804e4c8ce04d",
+      "status": "FINALIZED",
+      "from": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+      "to": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "value": 1000000000000000,
+      "type": 0,
+      "triggered_by": "0x00f481fba8979ae517e99e2777d849a7ad522c1f3f3e4433fbc8aa5c11c032c5",
+      "triggered_transactions": [],
+      "value_credited": true,
+      "created_at": "2026-10-21T12:17:31.126269+00:00",
+      "execution": null
+    }
+  ],
+  "native_payouts": [
+    {
+      "parent_hash": "0xe721a6d2e92dea91e3ccd933106a0738716e3a27babc8caa36449176397ece46",
+      "native_child_hash": "0x1db35802e49234a11e6e7c338357b8b294a5d8ed4a63d7da00a00ca660fbd997",
+      "recipient": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "amount_wei": "1000000000000000",
+      "parent_finalized_normal_return": true,
+      "child_finalized_credited": true,
+      "bidirectional_parent_child_link": true
+    },
+    {
+      "parent_hash": "0x81dd28a07c8ae919b39079dfd056dc9ff2ceec0d5ae586211129f86aa398727b",
+      "native_child_hash": "0x212d771c858776181b48f0ab0aadaa8f491b6e54e47fc3790a2d3627ac1c047d",
+      "recipient": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+      "amount_wei": "1000000000000000",
+      "parent_finalized_normal_return": true,
+      "child_finalized_credited": true,
+      "bidirectional_parent_child_link": true
+    },
+    {
+      "parent_hash": "0x00f481fba8979ae517e99e2777d849a7ad522c1f3f3e4433fbc8aa5c11c032c5",
+      "native_child_hash": "0x3412bc9765e576b7edc4078f384541fb45c9289c87ee9b9df399804e4c8ce04d",
+      "recipient": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+      "amount_wei": "1000000000000000",
+      "parent_finalized_normal_return": true,
+      "child_finalized_credited": true,
+      "bidirectional_parent_child_link": true
+    }
+  ],
+  "balance_checkpoints": [
+    {
+      "label": "before_progress_withdraw",
+      "checked_at": "2026-10-21T11:52:49.024Z",
+      "balances": [
+        {
+          "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+          "balance_wei": "3000000000000000"
+        },
+        {
+          "address": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "balance_wei": "1010074000000000000000"
+        },
+        {
+          "address": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "balance_wei": "27999000000000005000"
+        }
+      ]
+    },
+    {
+      "checked_at": "2026-10-21T12:05:31.575Z",
+      "label": "after_progress_withdraw",
+      "balances": [
+        {
+          "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+          "balance_wei": "2000000000000000"
+        },
+        {
+          "address": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "balance_wei": "1010074000000000000000"
+        },
+        {
+          "address": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "balance_wei": "28000000000000005000"
+        }
+      ]
+    },
+    {
+      "checked_at": "2026-10-21T12:14:19.510Z",
+      "label": "before_final_split_withdrawals",
+      "balances": [
+        {
+          "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+          "balance_wei": "2000000000000000"
+        },
+        {
+          "address": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "balance_wei": "1010074000000000000000"
+        },
+        {
+          "address": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "balance_wei": "28000000000000005000"
+        }
+      ]
+    },
+    {
+      "checked_at": "2026-10-21T12:18:31.242Z",
+      "label": "after_final_split_withdrawals",
+      "balances": [
+        {
+          "address": "0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C",
+          "balance_wei": "0"
+        },
+        {
+          "address": "0x6276095FAEA15108740445ff277fdA8c304657F4",
+          "balance_wei": "1010075000000000000000"
+        },
+        {
+          "address": "0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE",
+          "balance_wei": "28001000000000005000"
+        }
+      ]
+    }
+  ],
+  "conservation": {
+    "funded_wei": "3000000000000000",
+    "contractor_received_wei": "2000000000000000",
+    "client_refunded_wei": "1000000000000000",
+    "final_native_contract_balance_wei": "0",
+    "final_due_and_escrow_wei": "0"
+  },
+  "limitations": [
+    "One signed live project/milestone path with two textual semantic examples; not a model-accuracy benchmark or proof of delivered external artifacts.",
+    "Revision requests, stale-consent races, replay/authorization/cap failures and other branches have local SDK coverage; they were not separately exercised as live negative tests here.",
+    "Allocation receipts do not prove native delivery. The three payout conclusions use finalized normal-return parents, linked finalized credited native children, recipients/values and matching before/after wallet balances.",
+    "Reads were taken at separate times, not an atomic historical block. Final-split balance snapshots bracket both final withdrawals; each individual payout is attributed by its linked child.",
+    "Public production URL and submitted/reviewed commit identities remain to be supplied; this runtime result does not certify a public production deployment or steward approval."
+  ]
+}

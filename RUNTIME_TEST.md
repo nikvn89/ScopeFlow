@@ -1,76 +1,67 @@
-# V5 runtime checklist — business flow NOT RUN
+# ScopeFlow V5 — verified core runtime
 
-Deploy file: **`deploy/ScopeFlow.py`** (compact, 47,218 bytes).
-Readable reference: `contracts/ScopeFlow.py` (100,784 bytes; do not paste this larger file into Studio).
+Verified 21 October 2026 on StudioNet, chain 61999. Contract `ScopeGuard` 0.8.0:
+[0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C](https://explorer-studio.genlayer.com/address/0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C).
 
-Contract: `ScopeGuard` 0.8.0. Deployment is verified at
-[`0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C`](https://explorer-studio.genlayer.com/address/0xF18DbCe66c93C85d80bf7ABF19a3d79Db72D358C).
-Deployment transaction: `0xae058e2dc80b9a45ecda912d7902a899d25b612139d3a891a186c1c53512d307`.
-Checked 21 October 2026: FINALIZED, normal return, exact source parity, registry
-0.8.0 with milestone_delivery/staged_payments/payment_receipts true and count 0.
-See [deployment evidence](tests/evidence/deployment-0.8.0.json).
+Deployed artifact: `deploy/ScopeFlow.py` (47,218 bytes). The exact normalized SHA256 is `0037942acff3e68b64fc4d9dc9ae04ce19a5574814d713474bb2965a3d702d76`. Readable reference: `contracts/ScopeFlow.py`. Source parity was rechecked after the signed flow.
 
-Production dApp readiness, signed delivery/payment flow and native payouts are
-pending. Historical v4 proof remains in
-[tests/evidence/verified-runtime-0.7.0.json](tests/evidence/verified-runtime-0.7.0.json)
-and must not be represented as evidence for v5.
+Client: `0x6276095FAEA15108740445ff277fdA8c304657F4`.
+Contractor: `0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE`.
+Project #1; milestone #1, Responsive pages; fixed budget 0.001 GEN.
 
-## Minimal two-wallet path
+## Executed results
 
-Use a Client wallet A and a different Contractor wallet B on StudioNet. Use test
-amounts; the example below totals 0.003 GEN. Confirm each finalized state before
-the next operation. An acceptance window is a deadline, not a waiting period.
+| Operation | Verified observation |
+| --- | --- |
+| Create/fund then accept | Escrow 0.003 GEN; ACTIVE scope V1 |
+| Propose then accept milestone | Reserved 0.001; available 0.002; no payment |
+| Submit report #1 omitting pricing/navigation | DELIVERY_GAPS; no due or receipt |
+| Submit report #2 addressing all criteria | DELIVERY_MATCHES; no automatic allocation |
+| Client approves exact report #2 | Receipt #1; milestone PAID; project ACTIVE; due 0.001; escrow 0.002; reserved 0 |
+| Contractor progress withdrawal | Native 0.001 received; project still ACTIVE |
+| Contractor final offer #1; Client accepts exact ID | Share 0.001 of remaining 0.002, validity 3,600 seconds; CLOSED; each party due 0.001 |
+| Client and Contractor final withdrawals | Native 0.001 each; both dues zero; Contractor cumulative 0.002, Client refund 0.001 |
+| Final conservation | Contract native balance, escrow and reservations zero; receipt #1 unchanged |
 
-| Step | Signer and operation | Required observed result |
-| --- | --- | --- |
-| 1 | Fresh deploy, no arguments — VERIFIED | FINALIZED normal return; registry 0.8.0; delivery/payment capabilities true; initial count 0; exact source parity |
-| 2 | A creates project naming B, scope and 0.003 GEN escrow | Pending; escrow 0.003; reserved/due 0 |
-| 3 | B accepts project | ACTIVE, scope V1 |
-| 4 | A proposes a 0.001 GEN milestone | PROPOSED; no reservation/payment |
-| 5 | B accepts milestone | ACTIVE item; escrow 0.003; reserved 0.001; available 0.002 |
-| 6 | B submits a report explicitly omitting a criterion | Expected DELIVERY_GAPS; no due/receipt/payment; record actual verdict |
-| 7 | B submits a report explicitly addressing every criterion | Expected DELIVERY_MATCHES; exact new attempt ID; no automatic allocation |
-| 8 | A approves that exact attempt | PAID item; project ACTIVE; escrow 0.002; reserved 0; Contractor due 0.001; immutable receipt #1 |
-| 9 | B withdraws | Due 0; cumulative Contractor paid 0.001; verify linked credited native transfer and wallet delta |
-| 10 | B proposes final share 0.001 GEN of remaining 0.002; A accepts exact offer | CLOSED; remaining escrow 0; Contractor due 0.001; Client due 0.001 |
-| 11 | Each party withdraws its due | Dues 0; cumulative Contractor paid 0.002 and Client refunded 0.001; three total native payouts verified; receipt #1 unchanged |
+The project scope was `Build responsive home and pricing pages with working navigation between both pages.`
+Fixed milestone criteria: `Deliver responsive home and pricing pages with working navigation between both pages.`
+Report #1: `Delivered only a home page. The pricing page and navigation have not been delivered.`
+Report #2: `Delivered responsive home and pricing pages. Working navigation links connect both pages.`
+Both artifact URLs were empty and `artifact_fetched` was false.
 
-Example scope: `Build responsive home and pricing pages with working navigation between both pages.`
+## Transaction references
 
-Milestone title: `Responsive pages`.
+All parent writes listed in the machine-readable evidence were FINALIZED with explicit normal GenVM returns. Allocation and final-offer acceptance emitted no native payout; withdrawals did.
 
-Criteria: `Deliver responsive home and pricing pages with working navigation between both pages.`
+- Create/fund: [0xfd9d916abd16e9aefc88920225b73c208e1fd46b696979e43c799018fa2fae63](https://explorer-studio.genlayer.com/tx/0xfd9d916abd16e9aefc88920225b73c208e1fd46b696979e43c799018fa2fae63).
+- Accept project: [0x6273e1030a472c93c2052716426ca0bee3789dd97a430c33fb452ebad847349b](https://explorer-studio.genlayer.com/tx/0x6273e1030a472c93c2052716426ca0bee3789dd97a430c33fb452ebad847349b).
+- Propose milestone: [0xbfbfa23fab3366d669ceaea297ad6513a1ac68590f55c1ee7f96766146dc4c84](https://explorer-studio.genlayer.com/tx/0xbfbfa23fab3366d669ceaea297ad6513a1ac68590f55c1ee7f96766146dc4c84).
+- Accept milestone: [0x65bdeed5efe40604bb3704e3cf55398f23df013442938735db7475e861247895](https://explorer-studio.genlayer.com/tx/0x65bdeed5efe40604bb3704e3cf55398f23df013442938735db7475e861247895).
+- Delivery report #1 (GAPS): [0x654f2520eb68a8487843f50a097bd96b48cf2ddbf0f212b991abefef7da266fc](https://explorer-studio.genlayer.com/tx/0x654f2520eb68a8487843f50a097bd96b48cf2ddbf0f212b991abefef7da266fc).
+- Delivery report #2 (MATCHES): [0xb716a508c217031baed0f17c84ac017307fc4b9e8cffed29c9fe61ba7a7b7ef1](https://explorer-studio.genlayer.com/tx/0xb716a508c217031baed0f17c84ac017307fc4b9e8cffed29c9fe61ba7a7b7ef1).
+- Approve exact report: [0x169dfc6b49edc2d14bee7a833d334cb77f6bf4f9b65534fd16f1763f4e97b27f](https://explorer-studio.genlayer.com/tx/0x169dfc6b49edc2d14bee7a833d334cb77f6bf4f9b65534fd16f1763f4e97b27f).
+- Withdraw — Contractor: [0xe721a6d2e92dea91e3ccd933106a0738716e3a27babc8caa36449176397ece46](https://explorer-studio.genlayer.com/tx/0xe721a6d2e92dea91e3ccd933106a0738716e3a27babc8caa36449176397ece46).
+- Publish final offer: [0x01fe6e97c7b6e989f3cc316fd9bc04426bf4f177554ecd8b8b499c6356f1c63b](https://explorer-studio.genlayer.com/tx/0x01fe6e97c7b6e989f3cc316fd9bc04426bf4f177554ecd8b8b499c6356f1c63b).
+- Accept exact final offer: [0xa33ce61a8cbbea29b52064f35c67553248ffaf2fa9217c709c2418c9e464c4ab](https://explorer-studio.genlayer.com/tx/0xa33ce61a8cbbea29b52064f35c67553248ffaf2fa9217c709c2418c9e464c4ab).
+- Withdraw — Client: [0x81dd28a07c8ae919b39079dfd056dc9ff2ceec0d5ae586211129f86aa398727b](https://explorer-studio.genlayer.com/tx/0x81dd28a07c8ae919b39079dfd056dc9ff2ceec0d5ae586211129f86aa398727b).
+- Withdraw — Contractor: [0x00f481fba8979ae517e99e2777d849a7ad522c1f3f3e4433fbc8aa5c11c032c5](https://explorer-studio.genlayer.com/tx/0x00f481fba8979ae517e99e2777d849a7ad522c1f3f3e4433fbc8aa5c11c032c5).
 
-Negative report: `Delivered only a home page. The pricing page and navigation have not been delivered.`
+## Native delivery proof
 
-Matching report: `Delivered responsive home and pricing pages. Working navigation links connect both pages.`
+| Payment | Parent transaction | Credited native child | Amount |
+| --- | --- | --- | --- |
+| Contractor progress | [0xe721a6d2…](https://explorer-studio.genlayer.com/tx/0xe721a6d2e92dea91e3ccd933106a0738716e3a27babc8caa36449176397ece46) | [0x1db35802…](https://explorer-studio.genlayer.com/tx/0x1db35802e49234a11e6e7c338357b8b294a5d8ed4a63d7da00a00ca660fbd997) | 0.001 GEN |
+| Client final refund | [0x81dd28a0…](https://explorer-studio.genlayer.com/tx/0x81dd28a07c8ae919b39079dfd056dc9ff2ceec0d5ae586211129f86aa398727b) | [0x212d771c…](https://explorer-studio.genlayer.com/tx/0x212d771c858776181b48f0ab0aadaa8f491b6e54e47fc3790a2d3627ac1c047d) | 0.001 GEN |
+| Contractor final share | [0x00f481fb…](https://explorer-studio.genlayer.com/tx/0x00f481fba8979ae517e99e2777d849a7ad522c1f3f3e4433fbc8aa5c11c032c5) | [0x3412bc97…](https://explorer-studio.genlayer.com/tx/0x3412bc9765e576b7edc4078f384541fb45c9289c87ee9b9df399804e4c8ce04d) | 0.001 GEN |
 
-These verdicts are expected outcomes, not pre-recorded live results. A GAPS or
-UNCLEAR outcome cannot be manually converted into a PASS. Record differences
-and investigate before moving funds. No external artifact is required for this
-text-only review demonstration.
+Each child is FINALIZED, `value_credited: true`, has the correct recipient/value and points back to the parent that lists it. Contractor balance increased by 0.001 GEN across the progress withdrawal; across the two final withdrawals, each wallet increased by 0.001 GEN and contract balance fell from 0.002 GEN to zero. Full decimal wei balances, timestamps, immutable receipt and all selected transaction fields are in [verified-runtime-0.8.0.json](tests/evidence/verified-runtime-0.8.0.json).
 
-## Additional checks
+Reads are separate snapshots, not an atomic historical block. The two final payout balance snapshots bracket both withdrawals; individual attribution is supported by the parent/child records. These StudioNet observations do not promise a fee policy on other networks.
 
-If time permits, request a revision of a matching report; verify that the old
-attempt cannot be approved, then submit and approve a fresh attempt. Before
-milestone acceptance or allocation, create a final settlement offer and verify
-it becomes STALE afterward. Observe this through reads; extra deliberately
-failing signed transactions are optional because authorization, stale attempts,
-replays, caps, malformed outputs, overcommit and financial races have local SDK
-coverage. None of those local cases are claimed as live negative results.
+## Scope and remaining release checks
 
-## Evidence policy
+This verifies one live two-wallet business path and two textual classifier outcomes. It does not verify external artifacts, broad model accuracy, every adversarial input or every negative runtime branch. Revision requests, stale-consent races, role/replay/cap errors and additional money permutations have local SDK coverage only. Historical v4 evidence is retained separately and is not used as v5 proof.
 
-Capture full transaction hashes for deploy, approvals, delivery submission,
-allocation and withdrawals. Parent writes require FINALIZED plus normal GenVM
-return. Native transfers need linked child provenance, correct recipient/value,
-finalized credited status and before/after wallet balances. Keep allocation
-receipts separate from native payout proof.
+The public production URL, actual uploaded v5 commit and original reviewed Project baseline SHA have not been supplied. Pin actual full SHA values for repository and comparison Evidence; never substitute `main` or label an unverified baseline as reviewed.
 
-`npm run verify:deployed -- ADDRESS` compares deployed source with the frozen
-contract. `npm run capture:runtime -- ADDRESS PROJECT_ID TX_HASH ...` captures
-public selected fields and delivery histories without signing or exporting full
-RPC provider configuration. It labels output SNAPSHOT_ONLY_REVIEW_REQUIRED.
-Reads are not an atomic historical block; snapshots and actual outcomes must be
-reviewed before updating release status to runtime verified.
+To reproduce reads: `npm run verify:deployed -- ADDRESS` and `npm run check:runtime -- ADDRESS 1`. `npm run capture:runtime -- ADDRESS 1 TX_HASH ...` saves selected fields as `SNAPSHOT_ONLY_REVIEW_REQUIRED`; captured snapshots need assessment before any PASS claim.
